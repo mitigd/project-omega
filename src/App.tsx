@@ -383,11 +383,6 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { s
     const op1 = link1 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
     const op2 = link2 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
 
-    const pairs = shuffleArray([
-        { src: n1, op: op1, dst: n2 },
-        { src: n2, op: op2, dst: n3 }
-    ]);
-
     const isReverse = Math.random() > 0.5;
 
     return {
