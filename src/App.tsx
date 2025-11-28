@@ -200,73 +200,65 @@ const generateFluxComparison = (prevResult: string | null, forceMatch: boolean):
   };
 };
 
-// 3. FLUX OPPOSITION (Polysemy / Synonyms Update)
+// 3. FLUX OPPOSITION (Strict Polysemy - No Repeats)
 const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
   const relations = ['SAME', 'OPPOSITE', 'DIFFERENT']; 
   let result = getRandomItem(relations);
-  
   if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
   else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
 
-  // 1. RANDOMIZE NODES
   const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L'];
   const nodes = shuffleArray(pool).slice(0, 3);
   const n1 = nodes[0];
   const n2 = nodes[1];
   const n3 = nodes[2];
 
-  // 2. GENERATE SYNONYMS (4 Icons)
-  // We need distinct icons so we can mix-and-match
+  // Generate 5 Unique Icons
   const c1 = getRandomItem(ICONS);
   const c2 = getRandomItem(ICONS.filter(i => i !== c1));
   const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i)));
   const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
   const cNeutral = getRandomItem(ICONS.filter(i => ![c1, c2, c3, c4].includes(i)));
 
-  // Map 2 to SAME, 2 to OPPOSITE
-  // This destroys the "Matching Icons = Matching Logic" heuristic
   const dict = shuffleEntries({ 
-      [c1]: 'IDENTICAL', 
-      [c2]: 'IDENTICAL',
-      [c3]: 'INVERT', 
-      [c4]: 'INVERT',
+      [c1]: 'IDENTICAL', [c2]: 'IDENTICAL',
+      [c3]: 'INVERT', [c4]: 'INVERT',
       [cNeutral]: 'NEUTRAL'
   });
 
   const sameIcons = [c1, c2];
   const oppIcons = [c3, c4];
 
-  let link1Type = 'SAME';
-  let link2Type = 'SAME';
+  let link1Type = 'SAME', link2Type = 'SAME';
 
-  // 3. DETERMINE LOGIC
   if (result === 'DIFFERENT') {
       if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; }
       else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; }
   } else if (result === 'SAME') {
-      // S+S or O+O
       link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP';
       link2Type = link1Type;
   } else {
-      // S+O or O+S
       link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP';
       link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME';
   }
 
-  // 4. SELECT ICONS (Randomly pick from synonym pools)
-  const getIcon = (type: string) => {
-      if (type === 'NEUTRAL') return cNeutral;
-      if (type === 'SAME') return getRandomItem(sameIcons);
-      return getRandomItem(oppIcons);
+  // Helper to get pool
+  const getPool = (type: string) => {
+      if (type === 'NEUTRAL') return [cNeutral];
+      if (type === 'SAME') return sameIcons;
+      return oppIcons;
   };
 
-  const icon1 = getIcon(link1Type);
-  // Ensure we pick a distinct icon for the second link if possible, or allow same
-  // Actually, random selection is better. Ideally we WANT scenarios where 
-  // link1 is SAME (c1) and link2 is SAME (c2). Different icons, same meaning.
-  const icon2 = getIcon(link2Type);
+  // Select Icons (Strictly Distinct)
+  const icon1 = getRandomItem(getPool(link1Type));
+  
+  const pool2 = getPool(link2Type);
+  // Force icon2 to be different from icon1
+  // (Note: If one is Neutral and the other isn't, they are already different. 
+  // This mainly forces Same+Same to use c1+c2 instead of c1+c1).
+  const icon2 = getRandomItem(pool2.filter(i => i !== icon1)) || icon1; 
+  // Fallback to icon1 only if pool is empty (which only happens for Neutral+Neutral, but logic prevents that)
 
-  // Visual Scramble
   const isSwapped = Math.random() > 0.5;
   const visualChain = isSwapped 
       ? [ { l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 } ]
@@ -285,7 +277,7 @@ const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean):
   }
 };
 
-// 4. FLUX HIERARCHY (Polysemy / Synonyms Update)
+// 4. FLUX HIERARCHY (Strict Polysemy - No Repeats)
 const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
     const relations = ['HIGHER', 'LOWER', 'SAME'];
     let result = getRandomItem(relations);
@@ -293,14 +285,13 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
     else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
   
-    // 1. Generate 4 Unique Symbols (The Polysemy Pool)
+    // 1. Generate 4 Unique Symbols
     const c1 = getRandomItem(ICONS);
     const c2 = getRandomItem(ICONS.filter(i => i !== c1));
     const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i)));
     const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
 
     // 2. Map them: 2 mean PARENT, 2 mean CHILD
-    // This destroys the "Different symbols = Cancel out" heuristic.
     const dict = shuffleEntries({ 
         [c1]: 'PARENT_OF', 
         [c2]: 'PARENT_OF', 
@@ -315,22 +306,22 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L', 'Q', 'R', 'S'];
     const nodes = shuffleArray(pool).slice(0, 3); 
 
-    let link1Type = 0;
-    let link2Type = 0; 
-
-    // 3. Determine the Math
+    let link1Type = 0, link2Type = 0; 
     if (result === 'HIGHER') { link1Type = 1; link2Type = 1; }
     else if (result === 'LOWER') { link1Type = -1; link2Type = -1; }
     else { 
-        // SAME (Cancellation)
         if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } 
         else { link1Type = 1; link2Type = -1; } 
     }
 
-    // 4. Select Icons (Randomly pick from the available synonyms)
-    // Even if link1 and link2 are both PARENT, we might use different icons (c1 and c2).
+    // 3. SELECT ICONS (Strictly Distinct)
     const iconAB = link1Type === 1 ? getRandomItem(parentIcons) : getRandomItem(childIcons);
-    const iconBC = link2Type === 1 ? getRandomItem(parentIcons) : getRandomItem(childIcons);
+    
+    // Select the pool for the second link
+    const poolBC = link2Type === 1 ? parentIcons : childIcons;
+    
+    // FORCE DISTINCT: Filter out iconAB from the available choices
+    const iconBC = getRandomItem(poolBC.filter(i => i !== iconAB));
 
     return {
         stim: {
@@ -345,43 +336,38 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     };
 };
 
-// 5. FLUX CAUSAL (Polysemy / Synonyms Update)
+// 5. FLUX CAUSAL (Strict Polysemy - No Repeats)
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
     const relations = ['TRIGGER', 'BLOCK'];
     let result = getRandomItem(relations);
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
     else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
   
-    // 1. GENERATE SYNONYMS
     const codeAct1 = generateCode([]);
     const codeAct2 = generateCode([codeAct1]);
     const codeInh1 = generateCode([codeAct1, codeAct2]);
     const codeInh2 = generateCode([codeAct1, codeAct2, codeInh1]);
 
     const dict = shuffleEntries({ 
-        [codeAct1]: 'ACTIVATE', 
-        [codeAct2]: 'ACTIVATE',
-        [codeInh1]: 'INHIBIT', 
-        [codeInh2]: 'INHIBIT' 
+        [codeAct1]: 'ACTIVATE', [codeAct2]: 'ACTIVATE',
+        [codeInh1]: 'INHIBIT', [codeInh2]: 'INHIBIT' 
     });
 
     const acts = [codeAct1, codeAct2];
     const inhs = [codeInh1, codeInh2];
 
-    // SCRAMBLE LABELS
     const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
     const nodes = shuffleArray(pool).slice(0, 3); 
-    const n1 = nodes[0]; 
-    const n2 = nodes[1]; 
-    const n3 = nodes[2]; 
+    const n1 = nodes[0], n2 = nodes[1], n3 = nodes[2]; 
 
     let link1 = Math.random() > 0.5 ? 1 : -1; 
     let link2 = result === 'TRIGGER' ? link1 : -link1;
 
-    // 2. SELECT ICONS RANDOMLY FROM POOLS
-    // This allows "Inhibit + Inhibit" to look like "ZID + VEX" (Different words, same function)
+    // Select Icons (Strictly Distinct)
     const op1 = link1 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
-    const op2 = link2 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
+    
+    const pool2 = link2 === 1 ? acts : inhs;
+    const op2 = getRandomItem(pool2.filter(op => op !== op1));
 
     const isReverse = Math.random() > 0.5;
 
@@ -390,11 +376,7 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { s
             type: 'FLUX_CAUSAL',
             dictionary: dict,
             dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-            visuals: { 
-                nodes: [n1, n2, n3], 
-                ops: [op1, op2],
-                isReverse 
-            },
+            visuals: { nodes: [n1, n2, n3], ops: [op1, op2], isReverse },
             textQuery: `NET EFFECT: ${n1} on ${n3}`,
             logicProof: `${link1===1?'+':'-'} * ${link2===1?'+':'-'} = ${result==='TRIGGER'?'+':'-'}`
         },
