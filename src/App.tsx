@@ -249,42 +249,64 @@ const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean):
   }
 };
 
-// 4. FLUX HIERARCHY (Scrambled Labels)
+// 4. FLUX HIERARCHY (Polysemy / Synonyms Update)
 const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-  const relations = ['HIGHER', 'LOWER', 'SAME'];
-  let result = getRandomItem(relations);
+    const relations = ['HIGHER', 'LOWER', 'SAME'];
+    let result = getRandomItem(relations);
+    
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  
+    // 1. Generate 4 Unique Symbols (The Polysemy Pool)
+    const c1 = getRandomItem(ICONS);
+    const c2 = getRandomItem(ICONS.filter(i => i !== c1));
+    const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i)));
+    const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
 
-  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
-  else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+    // 2. Map them: 2 mean PARENT, 2 mean CHILD
+    // This destroys the "Different symbols = Cancel out" heuristic.
+    const dict = shuffleEntries({ 
+        [c1]: 'PARENT_OF', 
+        [c2]: 'PARENT_OF', 
+        [c3]: 'CHILD_OF', 
+        [c4]: 'CHILD_OF' 
+    });
 
-  const iconParent = getRandomItem(ICONS);
-  const iconChild = getRandomItem(ICONS.filter(i => i !== iconParent));
-  const dict = shuffleEntries({ [iconParent]: 'PARENT_OF', [iconChild]: 'CHILD_OF' });
+    const parentIcons = [c1, c2];
+    const childIcons = [c3, c4];
 
-  // SCRAMBLE LABELS
-  const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L', 'Q', 'R', 'S'];
-  const nodes = shuffleArray(pool).slice(0, 3); // e.g. ['Q', 'X', 'L']
-  // nodes[0] = Left Leaf, nodes[1] = Pivot (Center), nodes[2] = Right Leaf
+    // SCRAMBLE LABELS
+    const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L', 'Q', 'R', 'S'];
+    const nodes = shuffleArray(pool).slice(0, 3); 
 
-  let link1Type = 0, link2Type = 0;
-  if (result === 'HIGHER') { link1Type = 1; link2Type = 1; }
-  else if (result === 'LOWER') { link1Type = -1; link2Type = -1; }
-  else { if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } else { link1Type = 1; link2Type = -1; } }
+    let link1Type = 0;
+    let link2Type = 0; 
 
-  const iconAB = link1Type === 1 ? iconParent : iconChild;
-  const iconBC = link2Type === 1 ? iconParent : iconChild;
+    // 3. Determine the Math
+    if (result === 'HIGHER') { link1Type = 1; link2Type = 1; }
+    else if (result === 'LOWER') { link1Type = -1; link2Type = -1; }
+    else { 
+        // SAME (Cancellation)
+        if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } 
+        else { link1Type = 1; link2Type = -1; } 
+    }
 
-  return {
-    stim: {
-      type: 'FLUX_HIERARCHY',
-      dictionary: dict,
-      dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-      visuals: { nodes, linkAB: iconAB, linkBC: iconBC },
-      textQuery: `GENERATION: ${nodes[0]} vs ${nodes[2]}`, // Ask about Left vs Right leaf
-      logicProof: `Net: ${link1Type} + ${link2Type} = ${result}`
-    },
-    result
-  };
+    // 4. Select Icons (Randomly pick from the available synonyms)
+    // Even if link1 and link2 are both PARENT, we might use different icons (c1 and c2).
+    const iconAB = link1Type === 1 ? getRandomItem(parentIcons) : getRandomItem(childIcons);
+    const iconBC = link2Type === 1 ? getRandomItem(parentIcons) : getRandomItem(childIcons);
+
+    return {
+        stim: {
+            type: 'FLUX_HIERARCHY',
+            dictionary: dict,
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+            visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, 
+            textQuery: `GENERATION: ${nodes[0]} vs ${nodes[2]}`, 
+            logicProof: `Net: ${link1Type} + ${link2Type} = ${result === 'SAME' ? 0 : (result === 'HIGHER' ? 2 : -2)}`
+        },
+        result
+    };
 };
 
 // 5. FLUX CAUSAL (Reverse Flow & Scrambled Labels)
