@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   History, CheckCircle, XCircle, Zap, FastForward, Code, 
   ArrowRight, Settings, Save, Activity, 
-  BrainCircuit, Network, Cpu, Clock, Split, Scan, Keyboard, 
+  BrainCircuit, Network, Cpu, Clock, Split, Scan, 
   Compass, HelpCircle, Eye, EyeOff, Wrench, BookOpen, X
 } from 'lucide-react';
 
