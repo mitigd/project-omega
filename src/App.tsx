@@ -200,52 +200,88 @@ const generateFluxComparison = (prevResult: string | null, forceMatch: boolean):
   };
 };
 
-// 3. FLUX OPPOSITION (The Tangle)
+// 3. FLUX OPPOSITION (Polysemy / Synonyms Update)
 const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-  const relations = ['SAME', 'OPPOSITE', 'DIFFERENT'];
+  const relations = ['SAME', 'OPPOSITE', 'DIFFERENT']; 
   let result = getRandomItem(relations);
+  
   if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
   else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
 
-  // 1. RANDOMIZE NODES (Crucial Step)
+  // 1. RANDOMIZE NODES
   const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L'];
   const nodes = shuffleArray(pool).slice(0, 3);
   const n1 = nodes[0];
   const n2 = nodes[1];
   const n3 = nodes[2];
 
-  const icon1 = getRandomItem(ICONS);
-  const icon2 = getRandomItem(ICONS.filter(i => i !== icon1));
-  let link1Type = 'SAME', link2Type = 'SAME';
+  // 2. GENERATE SYNONYMS (4 Icons)
+  // We need distinct icons so we can mix-and-match
+  const c1 = getRandomItem(ICONS);
+  const c2 = getRandomItem(ICONS.filter(i => i !== c1));
+  const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i)));
+  const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
+  const cNeutral = getRandomItem(ICONS.filter(i => ![c1, c2, c3, c4].includes(i)));
 
+  // Map 2 to SAME, 2 to OPPOSITE
+  // This destroys the "Matching Icons = Matching Logic" heuristic
+  const dict = shuffleEntries({ 
+      [c1]: 'IDENTICAL', 
+      [c2]: 'IDENTICAL',
+      [c3]: 'INVERT', 
+      [c4]: 'INVERT',
+      [cNeutral]: 'NEUTRAL'
+  });
+
+  const sameIcons = [c1, c2];
+  const oppIcons = [c3, c4];
+
+  let link1Type = 'SAME';
+  let link2Type = 'SAME';
+
+  // 3. DETERMINE LOGIC
   if (result === 'DIFFERENT') {
-    if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; }
-    else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; }
+      if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; }
+      else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; }
   } else if (result === 'SAME') {
-    link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type;
+      // S+S or O+O
+      link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP';
+      link2Type = link1Type;
   } else {
-    link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME';
+      // S+O or O+S
+      link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP';
+      link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME';
   }
 
-  const mapMeaning = (t: string) => t === 'SAME' ? 'IDENTICAL' : (t === 'OPP' ? 'INVERT' : 'NEUTRAL');
-  const dict = shuffleEntries({ [icon1]: mapMeaning(link1Type), [icon2]: mapMeaning(link2Type) });
+  // 4. SELECT ICONS (Randomly pick from synonym pools)
+  const getIcon = (type: string) => {
+      if (type === 'NEUTRAL') return cNeutral;
+      if (type === 'SAME') return getRandomItem(sameIcons);
+      return getRandomItem(oppIcons);
+  };
 
-  // Visual Scramble (Swapping order)
+  const icon1 = getIcon(link1Type);
+  // Ensure we pick a distinct icon for the second link if possible, or allow same
+  // Actually, random selection is better. Ideally we WANT scenarios where 
+  // link1 is SAME (c1) and link2 is SAME (c2). Different icons, same meaning.
+  const icon2 = getIcon(link2Type);
+
+  // Visual Scramble
   const isSwapped = Math.random() > 0.5;
-  const visualChain = isSwapped
-    ? [{ l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 }]
-    : [{ l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 }];
+  const visualChain = isSwapped 
+      ? [ { l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 } ]
+      : [ { l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 } ];
 
   return {
-    stim: {
-      type: 'FLUX_OPPOSITION',
-      dictionary: dict,
-      dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-      visuals: { chain: visualChain },
-      textQuery: `DERIVE: ${n1} vs ${n3}`, // Queries the logical endpoints
-      logicProof: `${link1Type} + ${link2Type} = ${result}`
-    },
-    result
+      stim: {
+          type: 'FLUX_OPPOSITION',
+          dictionary: dict,
+          dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+          visuals: { chain: visualChain },
+          textQuery: `DERIVE: ${n1} vs ${n3}`, 
+          logicProof: `${link1Type} + ${link2Type} = ${result}`
+      },
+      result
   }
 };
 
@@ -309,50 +345,66 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     };
 };
 
-// 5. FLUX CAUSAL (Reverse Flow & Scrambled Labels)
+// 5. FLUX CAUSAL (Polysemy / Synonyms Update)
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-  const relations = ['TRIGGER', 'BLOCK'];
-  let result = getRandomItem(relations);
-  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
-  else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+    const relations = ['TRIGGER', 'BLOCK'];
+    let result = getRandomItem(relations);
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  
+    // 1. GENERATE SYNONYMS
+    const codeAct1 = generateCode([]);
+    const codeAct2 = generateCode([codeAct1]);
+    const codeInh1 = generateCode([codeAct1, codeAct2]);
+    const codeInh2 = generateCode([codeAct1, codeAct2, codeInh1]);
 
-  const codeAct = generateCode([]);
-  const codeInh = generateCode([codeAct]);
-  const dict = shuffleEntries({ [codeAct]: 'ACTIVATE', [codeInh]: 'INHIBIT' });
+    const dict = shuffleEntries({ 
+        [codeAct1]: 'ACTIVATE', 
+        [codeAct2]: 'ACTIVATE',
+        [codeInh1]: 'INHIBIT', 
+        [codeInh2]: 'INHIBIT' 
+    });
 
-  // SCRAMBLE LABELS
-  const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
-  const nodes = shuffleArray(pool).slice(0, 3); // [Start, Middle, End]
-  const n1 = nodes[0]; // Start
-  const n2 = nodes[1]; // Middle
-  const n3 = nodes[2]; // End
+    const acts = [codeAct1, codeAct2];
+    const inhs = [codeInh1, codeInh2];
 
-  let link1 = Math.random() > 0.5 ? 1 : -1;
-  let link2 = result === 'TRIGGER' ? link1 : -link1;
+    // SCRAMBLE LABELS
+    const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
+    const nodes = shuffleArray(pool).slice(0, 3); 
+    const n1 = nodes[0]; 
+    const n2 = nodes[1]; 
+    const n3 = nodes[2]; 
 
-  const op1 = link1 === 1 ? codeAct : codeInh;
-  const op2 = link2 === 1 ? codeAct : codeInh;
+    let link1 = Math.random() > 0.5 ? 1 : -1; 
+    let link2 = result === 'TRIGGER' ? link1 : -link1;
 
-  // RANDOMIZE FLOW DIRECTION
-  // Normal: n1 -> n2 -> n3
-  // Reverse: n3 <- n2 <- n1 (Visual swap)
-  const isReverse = Math.random() > 0.5;
+    // 2. SELECT ICONS RANDOMLY FROM POOLS
+    // This allows "Inhibit + Inhibit" to look like "ZID + VEX" (Different words, same function)
+    const op1 = link1 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
+    const op2 = link2 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
 
-  return {
-    stim: {
-      type: 'FLUX_CAUSAL',
-      dictionary: dict,
-      dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-      visuals: {
-        nodes: [n1, n2, n3],
-        ops: [op1, op2],
-        isReverse
-      },
-      textQuery: `NET EFFECT: ${n1} on ${n3}`,
-      logicProof: `${link1 === 1 ? '+' : '-'} * ${link2 === 1 ? '+' : '-'} = ${result === 'TRIGGER' ? '+' : '-'}`
-    },
-    result
-  };
+    const pairs = shuffleArray([
+        { src: n1, op: op1, dst: n2 },
+        { src: n2, op: op2, dst: n3 }
+    ]);
+
+    const isReverse = Math.random() > 0.5;
+
+    return {
+        stim: {
+            type: 'FLUX_CAUSAL',
+            dictionary: dict,
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+            visuals: { 
+                nodes: [n1, n2, n3], 
+                ops: [op1, op2],
+                isReverse 
+            },
+            textQuery: `NET EFFECT: ${n1} on ${n3}`,
+            logicProof: `${link1===1?'+':'-'} * ${link2===1?'+':'-'} = ${result==='TRIGGER'?'+':'-'}`
+        },
+        result
+    };
 };
 
 // 6. FLUX SPATIAL
