@@ -260,20 +260,62 @@ const generateFluxSpatial = (prevResult: string | null, forceMatch: boolean): { 
     return { stim: { type: 'FLUX_SPATIAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { sequence: moves }, textQuery: 'NET VECTOR FROM START', logicProof: `Sum(${moves.join(', ')}) = ${result}` }, result };
 };
 
-// 7. FLUX DEICTIC
+// 7. FLUX DEICTIC (Corrected 180-Degree Logic)
 const generateFluxDeictic = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-  const relations = ['LEFT', 'RIGHT', 'FRONT', 'BACK']; let result = getRandomItem(relations);
-  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-  const codeMe = generateCode([]); const codeYou = generateCode([codeMe]); const dict = shuffleEntries({ [codeMe]: 'ME (SAME)', [codeYou]: 'YOU (OPPOSITE)' });
+  const relations = ['LEFT', 'RIGHT', 'FRONT', 'BACK']; 
+  let result = getRandomItem(relations);
+  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; 
+  else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+
+  const codeMe = generateCode([]); 
+  const codeYou = generateCode([codeMe]); 
+  const dict = shuffleEntries({ [codeMe]: 'ME (SAME)', [codeYou]: 'YOU (OPPOSITE)' });
+
   const timeFrame = Math.random() > 0.5 ? 'NOW' : 'THEN';
-  let activeCode = Math.random() > 0.5 ? codeMe : codeYou; let activeFace = getRandomItem(['NORTH', 'EAST', 'SOUTH', 'WEST']);
-  const dirMap = { 'NORTH': 0, 'EAST': 1, 'SOUTH': 2, 'WEST': 3 }; const faceIdx = dirMap[activeFace as keyof typeof dirMap];
-  const idShift = activeCode === codeMe ? 0 : 2; const timeShift = timeFrame === 'NOW' ? 0 : 1; const totalShift = idShift + timeShift;
+  
+  let activeCode = Math.random() > 0.5 ? codeMe : codeYou; 
+  let activeFace = getRandomItem(['NORTH', 'EAST', 'SOUTH', 'WEST']);
+  
+  const dirMap = { 'NORTH': 0, 'EAST': 1, 'SOUTH': 2, 'WEST': 3 }; 
+  const faceIdx = dirMap[activeFace as keyof typeof dirMap];
+  
+  // LOGIC FIX:
+  // Identity: ME = 0 shift. YOU = 2 shifts (180 degrees).
+  // Time: NOW = 0 shift. THEN = 2 shifts (180 degrees).
+  // Total Shift = Identity + Time.
+  // Example: "YOU (180) + THEN (180)" = 360 (0). You are back to yourself.
+  
+  const idShift = activeCode === codeMe ? 0 : 2; 
+  const timeShift = timeFrame === 'NOW' ? 0 : 2; // CHANGED FROM 1 TO 2
+  const totalShift = idShift + timeShift;
+
   const effectiveFaceIdx = (faceIdx + totalShift) % 4;
-  let offset = 0; if (result === 'RIGHT') offset = 1; if (result === 'BACK') offset = 2; if (result === 'LEFT') offset = 3;
-  const targetAbsIdx = (effectiveFaceIdx + offset) % 4; const targetAbsDir = DIRECTIONS[targetAbsIdx];
-  let targetPos = 4; if (targetAbsDir === 'NORTH') targetPos = 1; if (targetAbsDir === 'EAST') targetPos = 5; if (targetAbsDir === 'SOUTH') targetPos = 7; if (targetAbsDir === 'WEST') targetPos = 3;
-  return { stim: { type: 'FLUX_DEICTIC', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { activeCode, activeFace, activePos: 4, targetPos, timeFrame, effectiveFaceIdx }, textQuery: `PERSPECTIVE: ${activeCode} (${timeFrame})`, logicProof: `${activeCode} at ${activeFace} + ${timeFrame} = Target` }, result };
+
+  let offset = 0; 
+  if (result === 'RIGHT') offset = 1; 
+  if (result === 'BACK') offset = 2; 
+  if (result === 'LEFT') offset = 3;
+  
+  const targetAbsIdx = (effectiveFaceIdx + offset) % 4; 
+  const targetAbsDir = DIRECTIONS[targetAbsIdx];
+  
+  let targetPos = 4; 
+  if (targetAbsDir === 'NORTH') targetPos = 1; 
+  if (targetAbsDir === 'EAST') targetPos = 5; 
+  if (targetAbsDir === 'SOUTH') targetPos = 7; 
+  if (targetAbsDir === 'WEST') targetPos = 3;
+
+  return {
+    stim: {
+      type: 'FLUX_DEICTIC',
+      dictionary: dict,
+      dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+      visuals: { activeCode, activeFace, activePos: 4, targetPos, timeFrame, effectiveFaceIdx },
+      textQuery: `PERSPECTIVE: ${activeCode} (${timeFrame})`,
+      logicProof: `${activeCode} at ${activeFace} + ${timeFrame} = Target`
+    },
+    result
+  };
 };
 
 // 8. FLUX CONDITIONAL
