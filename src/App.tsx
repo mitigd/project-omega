@@ -3,7 +3,7 @@ import {
   History, CheckCircle, XCircle, Zap, FastForward, Code, 
   ArrowRight, Settings, Save, Activity, 
   BrainCircuit, Network, Cpu, Clock, Split, Scan, Keyboard, 
-  Compass, HelpCircle, Eye, EyeOff, Wrench
+  Compass, HelpCircle, Eye, EyeOff, Wrench, BookOpen, X
 } from 'lucide-react';
 
 // --- Types ---
@@ -373,6 +373,165 @@ const BlurredLogicBox = ({ label, result, proof, isCurrent, revealOverride }: { 
   );
 };
 
+// --- Tutorial Modal ---
+const TutorialModal = ({ onClose }: { onClose: () => void }) => {
+  return (
+    <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-4xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+        
+        {/* Header */}
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+          <div>
+            <h2 className="text-2xl font-black text-white flex items-center gap-2">
+              <BookOpen className="w-6 h-6 text-purple-400"/> OMEGA FIELD GUIDE
+            </h2>
+            <p className="text-xs text-slate-500 font-mono uppercase tracking-widest mt-1">
+              The Hidden Calculations
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <div className="col-span-1 md:col-span-2 bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl text-center">
+            <h3 className="text-blue-400 font-bold uppercase tracking-widest text-sm mb-1">The Golden Rule</h3>
+            <p className="text-slate-300 text-sm">
+              Never match the pictures. Never match the words.<br/>
+              <strong className="text-white">Match the Hidden Result.</strong>
+            </p>
+          </div>
+
+          {/* 1. Feature */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">1. FEATURE</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Attribute Filter</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              The Code defines the Rule (e.g., "Match Color"). The Visuals are the Suspect. 
+              <br/><br/>
+              <strong>Calculation:</strong> Does the visual obey the code?
+              <br/>
+              <span className="text-white font-mono bg-black px-1 rounded">MATCH_COLOR</span> vs <span className="text-white font-mono bg-black px-1 rounded">NONE</span>.
+            </p>
+          </div>
+
+          {/* 2. Comparison */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">2. COMPARISON</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Pivot Scale</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Find the Hub (Center Node). Check the Context (Background Color) to define the Symbols.
+              <br/><br/>
+              <strong>Calculation:</strong> If A {'>'} Hub and C {'<'} Hub...
+              <br/>
+              <strong>Result:</strong> <span className="text-white font-mono bg-black px-1 rounded">A {'>'} C</span> (GREATER).
+            </p>
+          </div>
+
+          {/* 3. Opposition */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">3. OPPOSITION</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Polarity Math</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Ignore the pictures. Read the semantic meaning (Same vs Opposite).
+              <br/><br/>
+              <strong>Calculation:</strong> Multiply the links.
+              <br/>
+              Opposite (-1) x Opposite (-1) = <span className="text-white font-mono bg-black px-1 rounded">SAME (+1)</span>.
+            </p>
+          </div>
+
+          {/* 4. Hierarchy */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">4. HIERARCHY</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Elevator</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Track the movement from Subject to Object.
+              <br/><br/>
+              <strong>Calculation:</strong> Parent (+1) + Parent (+1) = <span className="text-white font-mono bg-black px-1 rounded">+2 (HIGHER)</span>.
+              <br/>
+              <em className="text-xs opacity-50">Watch out for Query Reversal (Right vs Left)!</em>
+            </p>
+          </div>
+
+          {/* 5. Causal */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">5. CAUSAL</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Flow Check</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Does the signal get through? Count the Inhibitors.
+              <br/><br/>
+              <strong>Calculation:</strong> Block (-) + Block (-) = <span className="text-white font-mono bg-black px-1 rounded">TRIGGER (+)</span>.
+              <br/>
+              <em className="text-xs opacity-50">Double Negative Logic.</em>
+            </p>
+          </div>
+
+          {/* 6. Spatial */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">6. SPATIAL</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Dead Reckoning</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              You start at (0,0). The grid is invisible.
+              <br/><br/>
+              <strong>Calculation:</strong> Sum the vectors.
+              <br/>
+              North (0,1) + East (1,0) = <span className="text-white font-mono bg-black px-1 rounded">NORTH-EAST</span>.
+            </p>
+          </div>
+
+          {/* 7. Deictic */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">7. DEICTIC</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Ghost Camera</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Don't trust your eyes. Calculate your <strong>True Rotation</strong>.
+              <br/><br/>
+              <strong>Logic:</strong>
+              <br/>
+              1. <strong>YOU:</strong> Flip 180° (Opposite Seat).
+              <br/>
+              2. <strong>THEN:</strong> Flip 180° (Opposite Time).
+              <br/>
+              From that *new* spot, where is the target?
+            </p>
+          </div>
+
+          {/* 8. Conditional */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">8. CONDITIONAL</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Rule Stack</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Execute code in your head.
+              <br/><br/>
+              <strong>Calculation:</strong>
+              <br/>
+              Input (Red) + Rule (Invert) = <span className="text-white font-mono bg-black px-1 rounded">BLUE</span>.
+            </p>
+          </div>
+
+          {/* 9. Analogy */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 col-span-1 md:col-span-2">
+            <div className="text-emerald-400 font-black text-lg mb-2">9. ANALOGY</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Meta-Match</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Don't compare the items. Compare the <strong>Relationships</strong>.
+              <br/><br/>
+              <strong>Calculation:</strong>
+              <br/>
+              Network 1 (Causes) vs Network 2 (Prevents) = <span className="text-white font-mono bg-black px-1 rounded">NON-ANALOGOUS</span>.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> = ({ stim, isRepairMode }) => {
   const [revealHint, setRevealHint] = useState(false);
   useEffect(() => { setRevealHint(false); }, [stim]);
@@ -451,6 +610,7 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
 export default function ProjectOmegaUltimate() {
   
   const [showSettings, setShowSettings] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [config, setConfig] = useState<GameConfig>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('OMEGA_CONFIG_ULTIMATE');
@@ -723,8 +883,17 @@ export default function ProjectOmegaUltimate() {
       {/* Header */}
       <div className="w-full flex justify-between items-center mb-4 border-b border-slate-800 pb-2 z-10 px-2 flex-shrink-0">
         <div className="flex items-center gap-2"><div className="p-1.5 bg-white text-black font-black text-lg rounded shadow-[0_0_15px_rgba(255,255,255,0.3)]">Ω</div><div><div className="font-bold tracking-widest text-base md:text-lg leading-none">OMEGA</div><div className="text-[10px] text-slate-500 uppercase font-mono hidden md:block leading-none">Ultimate RFT Engine</div></div></div>
-        <div className="flex items-center gap-4 md:gap-8 text-xs font-mono uppercase"><div className="text-right"><div className="text-slate-500 text-[10px]">{config.isPracticeMode ? 'PRAC ELO' : 'REAL ELO'}</div><div className={`${config.isPracticeMode ? 'text-yellow-400' : 'text-emerald-400'} font-bold text-base flex items-center gap-2 justify-end`}>{activeElo} {!config.isPracticeMode && (<button onClick={resetRealElo} className="opacity-0 hover:opacity-100 transition-opacity text-red-500"><XCircle className="w-3 h-3"/></button>)}</div></div><button onClick={openSettings} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button></div>
+        <div className="flex items-center gap-4 md:gap-8 text-xs font-mono uppercase"><div className="text-right"><div className="text-slate-500 text-[10px]">{config.isPracticeMode ? 'PRAC ELO' : 'REAL ELO'}</div><div className={`${config.isPracticeMode ? 'text-yellow-400' : 'text-emerald-400'} font-bold text-base flex items-center gap-2 justify-end`}>{activeElo} {!config.isPracticeMode && (<button onClick={resetRealElo} className="opacity-0 hover:opacity-100 transition-opacity text-red-500"><XCircle className="w-3 h-3"/></button>)}</div></div><button onClick={openSettings} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button>
+        
+        {/* TUTORIAL BUTTON */}
+        <button onClick={() => setShowTutorial(true)} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white" title="How to Play">
+          <BookOpen className="w-5 h-5" />
+        </button>
+        </div>
       </div>
+
+      {/* Render Tutorial Modal */}
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
       
       {/* REPAIR MODE BANNER */}
       {isRepairMode && (
@@ -746,8 +915,39 @@ export default function ProjectOmegaUltimate() {
         </div>
       )}
       {/* Main */}
-      <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 overflow-hidden">
-        {phase === 'IDLE' && (<div className="bg-slate-900 border border-slate-800 p-8 md:p-12 rounded-3xl text-center shadow-2xl mx-auto w-full max-w-4xl animate-in fade-in zoom-in-95"><h1 className="text-3xl md:text-5xl font-black text-white mb-6">COGNITIVE FLUX</h1><p className="text-slate-400 text-sm md:text-base mb-10 leading-relaxed">Ultimate Relational Frame Training.<br/>Decode the <span className="text-purple-400 font-bold">Blind Cipher</span>. Match the Logic to N-{config.nBackLevel}.</p><div className="flex justify-center gap-6 mb-10 text-slate-500"><div className="flex flex-col items-center gap-2"><Cpu className="w-6 h-6"/><span>Cipher</span></div><div className="flex flex-col items-center gap-2"><Network className="w-6 h-6"/><span>Graph</span></div><div className="flex flex-col items-center gap-2"><BrainCircuit className="w-6 h-6"/><span>Logic</span></div></div><div className="text-xs text-slate-500 font-mono flex items-center justify-center gap-2 mb-8 bg-slate-950/50 p-2 rounded border border-slate-800"><Keyboard className="w-4 h-4"/> <span>Use Keys:</span><span className="bg-slate-800 px-1 rounded text-white">D / ←</span><span>or</span><span className="bg-slate-800 px-1 rounded text-white">J / →</span></div><button onClick={init} className="w-full py-5 bg-white text-black font-black tracking-widest rounded-xl hover:bg-slate-200 transition-transform hover:scale-[1.02] flex items-center justify-center gap-3 text-lg"><Zap className="w-5 h-5 fill-current"/> INITIALIZE</button></div>)}
+<div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 overflow-hidden">
+        {phase === 'IDLE' && (
+          <div className="bg-slate-900 border border-slate-800 p-8 md:p-12 rounded-3xl text-center shadow-2xl mx-auto w-full max-w-4xl animate-in fade-in zoom-in-95">
+            <h1 className="text-3xl md:text-5xl font-black text-white mb-6">COGNITIVE FLUX</h1>
+            <p className="text-slate-400 text-sm md:text-base mb-10 leading-relaxed">
+               Ultimate Relational Frame Training.<br/>
+               Decode the <span className="text-purple-400 font-bold">Blind Cipher</span>. Match the Logic to N-{config.nBackLevel}.
+            </p>
+            <div className="flex justify-center gap-6 mb-10 text-slate-500">
+                <div className="flex flex-col items-center gap-2"><Cpu className="w-6 h-6"/><span>Cipher</span></div>
+                <div className="flex flex-col items-center gap-2"><Network className="w-6 h-6"/><span>Graph</span></div>
+                <div className="flex flex-col items-center gap-2"><BrainCircuit className="w-6 h-6"/><span>Logic</span></div>
+            </div>
+            
+            {/* UPDATED BUTTON LAYOUT: Vertical Stack with Centering */}
+            <div className="flex flex-col items-center w-full gap-4">
+                <button 
+                    onClick={() => setShowTutorial(true)} 
+                    className="px-8 py-3 bg-slate-800 text-slate-300 font-bold tracking-widest rounded-xl hover:bg-slate-700 transition-transform hover:scale-105 flex items-center justify-center gap-2 text-xs border border-slate-700"
+                >
+                   <BookOpen className="w-4 h-4"/> HOW TO PLAY
+                </button>
+                
+                <button 
+                    onClick={init} 
+                    className="w-full max-w-md py-5 bg-white text-black font-black tracking-widest rounded-xl hover:bg-slate-200 transition-transform hover:scale-[1.02] flex items-center justify-center gap-3 text-lg shadow-xl shadow-white/10"
+                >
+                   <Zap className="w-5 h-5 fill-current"/> INITIALIZE
+                </button>
+            </div>
+
+          </div>
+        )}
         {(phase === 'WARMUP' || phase === 'PLAYING') && currentItem && (
           <div className="w-full h-full flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300 gap-4 md:gap-8">
               <div className={`w-full flex-1 flex flex-col lg:flex-row gap-4 items-center justify-center min-h-0 ${currentItem.stimulus.dictionaryPos === 'RIGHT' ? 'lg:flex-row-reverse' : ''}`}>
