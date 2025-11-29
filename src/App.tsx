@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   History, CheckCircle, XCircle, Zap, FastForward, Code, 
-  ArrowRight, Settings, Save, Activity, BrainCircuit, Network,
-  Cpu, Clock, Split, Scan, Compass, HelpCircle, Eye, EyeOff,
-  Wrench, BookOpen, X, Ban, Search
+  ArrowRight, Settings, Save, Activity,
+  BrainCircuit, Network, Cpu, Clock, Split, Scan,
+  Compass, HelpCircle, Eye, EyeOff, Wrench, BookOpen, 
+  X, Ban
 } from 'lucide-react';
 
 // --- Types ---
@@ -33,9 +34,7 @@ interface StimulusData {
   textQuery: string;
   logicProof: string; 
   contextColors?: string[]; 
-  // UPGRADES
-  isNegated?: boolean; 
-  isWildcard?: boolean;
+  isNegated?: boolean; // Kept Negation
 }
 
 interface HistoryItem {
@@ -97,12 +96,12 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-// --- Meta Modifier: Applies Negation and Wildcards ---
+// --- Meta Modifier: Applies Negation Only ---
 const applyMetaModifiers = (data: { stim: StimulusData, result: string }): { stim: StimulusData, result: string } => {
     let { stim, result } = data;
     
-    // 1. NEGATION CURSE (20% chance if Elo > 1000) -- NOT elo locked
-    if (Math.random() < 0.20) {
+    // NEGATION CURSE (40% chance, No Elo Lock for testing)
+    if (Math.random() < 0.40) {
         let invertedResult = result;
         const opposites: Record<string, string> = {
             'GREATER': 'LESSER', 'LESSER': 'GREATER',
@@ -123,41 +122,9 @@ const applyMetaModifiers = (data: { stim: StimulusData, result: string }): { sti
             result = invertedResult;
         }
     }
-
-    // 2. WILDCARD QUERY (15% chance if Elo > 1200)
-    if (!stim.isNegated && Math.random() < 0.15) {
-        stim.isWildcard = true;
-        let answer = '';
-
-        if (stim.type === 'FLUX_COMPARISON' && stim.visuals.hub) {
-            answer = stim.visuals.hub;
-            stim.textQuery = `RECALL: CENTER NODE?`;
-        } 
-        else if (stim.type === 'FLUX_FEATURE') {
-            answer = stim.visuals.start.color;
-            stim.textQuery = `RECALL: START COLOR?`;
-        }
-        else if (stim.type === 'FLUX_SPATIAL') {
-            answer = stim.visuals.sequence[0];
-            stim.textQuery = `RECALL: FIRST CODE?`;
-        }
-        else if (stim.type === 'FLUX_DEICTIC') {
-            answer = stim.visuals.activeFace;
-            stim.textQuery = `RECALL: AVATAR FACING?`;
-        }
-        else {
-            const keys = Object.keys(stim.dictionary);
-            const targetKey = keys[0];
-            answer = stim.dictionary[targetKey];
-            stim.textQuery = `RECALL: MEANING OF ${targetKey}?`;
-        }
-
-        result = answer; 
-        stim.logicProof = `Wildcard Recall: ${answer}`;
-    }
-
     return { stim, result };
 };
+
 
 // 1. FLUX FEATURE
 const generateFluxFeature = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
@@ -207,7 +174,9 @@ const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean):
   else if (result === 'SAME') { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type; } 
   else { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME'; }
   const getIcon = (type: string) => { if (type === 'NEUTRAL') return cNeutral; if (type === 'SAME') return getRandomItem(sameIcons); return getRandomItem(oppIcons); };
-  const icon1 = getIcon(link1Type); const icon2 = getIcon(link2Type);
+  const icon1 = getIcon(link1Type); 
+  const pool2 = (type: string) => type === 'NEUTRAL' ? [cNeutral] : (type==='SAME' ? sameIcons : oppIcons);
+  const icon2 = getRandomItem(pool2(link2Type).filter(i => i !== icon1)) || icon1; 
   const isSwapped = Math.random() > 0.5; const visualChain = isSwapped ? [ { l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 } ] : [ { l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 } ];
   return { stim: { type: 'FLUX_OPPOSITION', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { chain: visualChain }, textQuery: `DERIVE: ${n1} vs ${n3}`, logicProof: `${link1Type} + ${link2Type} = ${result}` }, result };
 };
@@ -233,13 +202,14 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     return { stim: { type: 'FLUX_HIERARCHY', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, textQuery: queryText, logicProof: proofString }, result };
 };
 
-// 5. FLUX CAUSAL (Strict Polysemy - No Repeats)
+// 5. FLUX CAUSAL 
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
     const relations = ['TRIGGER', 'BLOCK'];
     let result = getRandomItem(relations);
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
     else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
   
+    // 1. Generate Codes
     const codeAct1 = generateCode([]);
     const codeAct2 = generateCode([codeAct1]);
     const codeInh1 = generateCode([codeAct1, codeAct2]);
@@ -257,12 +227,18 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { s
     const nodes = shuffleArray(pool).slice(0, 3); 
     const n1 = nodes[0], n2 = nodes[1], n3 = nodes[2]; 
 
+    // FIX: Generate Colors for the nodes (Red/Blue)
+    const nodeColors = [
+        Math.random() > 0.5 ? 'RED' : 'BLUE', 
+        Math.random() > 0.5 ? 'RED' : 'BLUE', 
+        Math.random() > 0.5 ? 'RED' : 'BLUE'
+    ];
+
     let link1 = Math.random() > 0.5 ? 1 : -1; 
     let link2 = result === 'TRIGGER' ? link1 : -link1;
 
-    // Select Icons (Strictly Distinct)
+    // Select Icons
     const op1 = link1 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
-    
     const pool2 = link2 === 1 ? acts : inhs;
     const op2 = getRandomItem(pool2.filter(op => op !== op1));
 
@@ -273,7 +249,8 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { s
             type: 'FLUX_CAUSAL',
             dictionary: dict,
             dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-            visuals: { nodes: [n1, n2, n3], ops: [op1, op2], isReverse },
+            // FIX: Added nodeColors to the visuals object
+            visuals: { nodes: [n1, n2, n3], ops: [op1, op2], isReverse, nodeColors },
             textQuery: `NET EFFECT: ${n1} on ${n3}`,
             logicProof: `${link1===1?'+':'-'} * ${link2===1?'+':'-'} = ${result==='TRIGGER'?'+':'-'}`
         },
@@ -344,8 +321,7 @@ const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean): { 
 // --- Helpers ---
 
 const getComplexityCost = (stim: StimulusData): number => {
-  if (stim.isWildcard) return 3; // Wildcards take focus
-  if (stim.isNegated) return 4; // Negation adds load
+  if (stim.isNegated) return 4; 
   switch (stim.type) {
     case 'FLUX_FEATURE': return 1;
     case 'FLUX_COMPARISON': return 2;
@@ -376,10 +352,12 @@ const BlurredLogicBox = ({ label, result, proof, isCurrent, revealOverride }: { 
 // --- VISUAL RENDERER ---
 const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> = ({ stim, isRepairMode }) => {
   const [revealHint, setRevealHint] = useState(false);
+  
+  // Removed isMasked / setTimeout logic
   useEffect(() => { setRevealHint(false); }, [stim]);
+  
   const showHint = revealHint || (isRepairMode && stim.type === 'FLUX_DEICTIC');
 
-  // RENDER CONTENT
   const renderContent = () => {
       // 1. FEATURE
       if (stim.type === 'FLUX_FEATURE') {
@@ -418,7 +396,8 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
           const renderNodes = isReverse ? [...nodes].reverse() : nodes;
           const renderOps = isReverse ? [...ops].reverse() : ops;
           const arrowRotation = isReverse ? 'rotate-180' : '';
-          return (<div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100"><div className="px-4 py-3 bg-slate-800 rounded-lg text-white font-bold border border-slate-600 shadow-lg">{renderNodes[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="px-3 py-2 bg-slate-900 text-slate-400 text-sm rounded border border-slate-800 font-mono">{renderNodes[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="px-4 py-3 bg-slate-800 rounded-lg text-white font-bold border border-slate-600 shadow-lg">{renderNodes[2]}</div></div>)
+          const getNodeStyle = (color: string) => color === 'RED' ? 'border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'border-blue-500 text-blue-100 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+          return (<div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100"><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[isReverse?2:0])}`}>{renderNodes[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[1])}`}>{renderNodes[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl">{renderOps[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[isReverse?0:2])}`}>{renderNodes[2]}</div></div>)
       }
       // 6. SPATIAL
       if (stim.type === 'FLUX_SPATIAL') {
@@ -449,31 +428,16 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
   };
 
   return (
-      <div className="relative">
-          {/* RENDER STIMULUS CONTENT */}
-          {renderContent()}
-
-          {/* NEGATION OVERLAY */}
+      <div className={`relative p-6 rounded-3xl transition-all duration-500 ${stim.isNegated ? 'border-4 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.3)] bg-red-950/20' : ''}`}>
+          
+          {/* NEGATION BADGE (Clean design, non-intrusive) */}
           {stim.isNegated && (
-              <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-                  <div className="w-64 h-64 border-[6px] border-red-600 rounded-full opacity-40 animate-pulse flex items-center justify-center">
-                      <Ban className="w-32 h-32 text-red-600" />
-                  </div>
-                  <div className="absolute bottom-[-40px] bg-red-900/80 px-4 py-1 rounded text-red-200 font-bold uppercase tracking-[0.3em] text-xs">
-                      LOGIC INVERTED
-                  </div>
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-1.5 rounded-full font-black tracking-widest text-xs shadow-lg flex items-center gap-2 z-50 border-2 border-red-400">
+                  <Ban className="w-4 h-4" /> LOGIC INVERTED
               </div>
           )}
 
-          {/* WILDCARD OVERLAY INDICATOR (Subtle) */}
-          {stim.isWildcard && (
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
-                  <Search className="w-6 h-6 text-yellow-400" />
-                  <div className="text-[10px] text-yellow-400 font-bold uppercase bg-black/80 px-2 py-0.5 rounded mt-1">
-                      MEMORY CHECK
-                  </div>
-              </div>
-          )}
+          {renderContent()}
       </div>
   );
 };
@@ -490,10 +454,34 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">2. COMPARISON</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Pivot Scale</div><p className="text-slate-400 text-sm leading-relaxed">Find the Hub. Check the Context (Color) for rules.<br/><br/><strong>Calculation:</strong> If A {'>'} Hub and C {'<'} Hub...<br/><strong>Result:</strong> <span className="text-white font-mono bg-black px-1 rounded">A {'>'} C</span> (GREATER).</p></div>
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">3. OPPOSITION</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">Polarity Math</div><p className="text-slate-400 text-sm leading-relaxed">Ignore the pictures. Read the semantic meaning.<br/><br/><strong>Calculation:</strong> Opposite (-1) x Opposite (-1) = <span className="text-white font-mono bg-black px-1 rounded">SAME (+1)</span>.</p></div>
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">4. HIERARCHY</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Elevator</div><p className="text-slate-400 text-sm leading-relaxed">Track movement from Subject to Object.<br/><br/><strong>Calculation:</strong> Parent (+1) + Parent (+1) = <span className="text-white font-mono bg-black px-1 rounded">+2 (HIGHER)</span>.<br/><em className="text-xs opacity-50">Watch out for Query Reversal!</em></p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">5. CAUSAL</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">Chromatic Gating</div><p className="text-slate-400 text-sm leading-relaxed">Trace flow. Gates depend on Node Color.<br/><br/><strong>Calculation:</strong> Block(-) + Block(-) = <span className="text-white font-mono bg-black px-1 rounded">TRIGGER(+)</span>.</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">6. SPATIAL</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">Rotational Delta</div><p className="text-slate-400 text-sm leading-relaxed">Track your heading transformation.<br/><br/><strong>Calculation:</strong> Right(90) + Right(90) = <span className="text-white font-mono bg-black px-1 rounded">180_FLIP</span>.</p></div>
+          {/* 5. Causal */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">5. CAUSAL</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Chromatic Gating</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Trace the signal flow. Gates are conditional based on <strong>Node Color</strong>.
+              <br/><br/>
+              <strong>Rule:</strong> <span className="text-white font-mono bg-black px-1 rounded">BLOCK_RED</span> stops Red nodes but allows Blue nodes to pass.
+              <br/>
+              <strong>Calculation:</strong> Does the signal survive Link 1? If yes, does it survive Link 2?
+              <br/>
+              <em className="text-xs opacity-50">Watch the Arrow Direction!</em>
+            </p>
+          </div>
+          {/* 6. Spatial */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="text-emerald-400 font-black text-lg mb-2">6. SPATIAL</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Relative Heading</div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              You are a compass needle starting <strong>NORTH</strong>. Codes are relative turns.
+              <br/><br/>
+              <strong>Calculation:</strong> Track your rotation state.
+              <br/>
+              Start(N) + Turn Right(90) + Turn Right(90) = <span className="text-white font-mono bg-black px-1 rounded">180_FLIP</span> (South).
+            </p>
+          </div>
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">7. DEICTIC</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Ghost Camera</div><p className="text-slate-400 text-sm leading-relaxed">1. <strong>YOU:</strong> Flip 180°.<br/>2. <strong>THEN:</strong> Flip 180°.<br/>From that *new* spot, where is the target?</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">8. CONDITIONAL</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Prism (Stroop)</div><p className="text-slate-400 text-sm leading-relaxed"><strong>Filter:</strong> Shape determines if you read Text or Ink.<br/><strong>Modify:</strong> Apply Code (Invert/Keep).</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">8. CONDITIONAL</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Prism (Stroop)</div><p className="text-slate-400 text-sm leading-relaxed"><strong>1. Filter:</strong> Check the <strong className="text-white">Border Shape</strong>. The Dictionary tells you to read the <em>Text</em> or the <em>Ink Color</em>.<br/><strong>2. Modify:</strong> Apply the Code (Keep or Invert).<br/><br/><strong>Calculation:</strong><br/>Input (Blue Ink) + Rule (Invert) = <span className="text-white font-mono bg-black px-1 rounded">RED</span>.</p></div>
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 col-span-1 md:col-span-2"><div className="text-emerald-400 font-black text-lg mb-2">9. ANALOGY</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Meta-Match</div><p className="text-slate-400 text-sm leading-relaxed">Compare Relationships.<br/>Net 1 (Causes) vs Net 2 (Prevents) = <span className="text-white font-mono bg-black px-1 rounded">NON-ANALOGOUS</span>.</p></div>
         </div>
       </div>
@@ -613,9 +601,8 @@ export default function ProjectOmegaUltimate() {
       default: turnData = generateFluxFeature(prevResult, shouldMatch);
     }
 
-    // --- APPLY META MODIFIERS (Negation + Wildcards) ---
-    // Note: Repair Mode disables meta-modifiers to keep drilling pure.
-    if (!isRepairMode) {
+    // --- APPLY META MODIFIERS (Negation Only) ---
+    if (!isRepairMode) { 
         turnData = applyMetaModifiers(turnData);
     }
 
