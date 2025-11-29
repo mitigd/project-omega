@@ -202,45 +202,78 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     return { stim: { type: 'FLUX_HIERARCHY', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, textQuery: queryText, logicProof: proofString }, result };
 };
 
-// 5. FLUX CAUSAL 
+// 5. FLUX CAUSAL (Chromatic Gating + Polysemy)
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
     const relations = ['TRIGGER', 'BLOCK'];
     let result = getRandomItem(relations);
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
     else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
   
-    // 1. Generate Codes
-    const codeAct1 = generateCode([]);
-    const codeAct2 = generateCode([codeAct1]);
-    const codeInh1 = generateCode([codeAct1, codeAct2]);
-    const codeInh2 = generateCode([codeAct1, codeAct2, codeInh1]);
+    // 1. Generate Synonyms (2 codes per rule)
+    const c1 = generateCode([]); const c2 = generateCode([c1]);
+    const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
+    const c5 = generateCode([c1, c2, c3, c4]); const c6 = generateCode([c1, c2, c3, c4, c5]);
 
     const dict = shuffleEntries({ 
-        [codeAct1]: 'ACTIVATE', [codeAct2]: 'ACTIVATE',
-        [codeInh1]: 'INHIBIT', [codeInh2]: 'INHIBIT' 
+        [c1]: 'BLOCK_RED', [c2]: 'BLOCK_RED',
+        [c3]: 'BLOCK_BLUE', [c4]: 'BLOCK_BLUE',
+        [c5]: 'PASS', [c6]: 'PASS'
     });
 
-    const acts = [codeAct1, codeAct2];
-    const inhs = [codeInh1, codeInh2];
+    const blockRedCodes = [c1, c2];
+    const blockBlueCodes = [c3, c4];
+    const passCodes = [c5, c6];
 
+    // 2. Generate Nodes & Colors
     const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
-    const nodes = shuffleArray(pool).slice(0, 3); 
-    const n1 = nodes[0], n2 = nodes[1], n3 = nodes[2]; 
-
-    // FIX: Generate Colors for the nodes (Red/Blue)
-    const nodeColors = [
+    const nodes = shuffleArray(pool).slice(0, 3);
+    const colors = [
         Math.random() > 0.5 ? 'RED' : 'BLUE', 
         Math.random() > 0.5 ? 'RED' : 'BLUE', 
         Math.random() > 0.5 ? 'RED' : 'BLUE'
     ];
 
-    let link1 = Math.random() > 0.5 ? 1 : -1; 
-    let link2 = result === 'TRIGGER' ? link1 : -link1;
+    // 3. Helper to check if flow passes
+    const checkPass = (op: string, color: string) => {
+        if (passCodes.includes(op)) return true;
+        if (blockRedCodes.includes(op) && color === 'RED') return false;
+        if (blockBlueCodes.includes(op) && color === 'BLUE') return false;
+        return true; // e.g. BlockRed on Blue node -> Pass
+    };
 
-    // Select Icons
-    const op1 = link1 === 1 ? getRandomItem(acts) : getRandomItem(inhs);
-    const pool2 = link2 === 1 ? acts : inhs;
-    const op2 = getRandomItem(pool2.filter(op => op !== op1));
+    // 4. Find a valid chain for the desired result
+    let op1 = c5;
+    let op2 = c5;
+    
+    // Brute force a valid combination
+    let found = false;
+    const allOps = [...blockRedCodes, ...blockBlueCodes, ...passCodes];
+    
+    for (let i = 0; i < 50; i++) {
+        const t1 = getRandomItem(allOps);
+        const t2 = getRandomItem(allOps);
+        
+        // Trace: N1 -> t1 -> N2 -> t2 -> N3
+        // Note: For Link 2, the source is N2.
+        
+        const pass1 = checkPass(t1, colors[0]);
+        const pass2 = pass1 ? checkPass(t2, colors[1]) : false; // If 1 blocked, 2 never happens
+        
+        const outcome = pass2 ? 'TRIGGER' : 'BLOCK';
+        
+        if (outcome === result) {
+            op1 = t1;
+            op2 = t2;
+            found = true;
+            break;
+        }
+    }
+    
+    // Fail-safe
+    if (!found) {
+        if (result === 'TRIGGER') { op1 = getRandomItem(passCodes); op2 = getRandomItem(passCodes); }
+        else { op1 = colors[0] === 'RED' ? getRandomItem(blockRedCodes) : getRandomItem(blockBlueCodes); op2 = getRandomItem(passCodes); }
+    }
 
     const isReverse = Math.random() > 0.5;
 
@@ -249,10 +282,14 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { s
             type: 'FLUX_CAUSAL',
             dictionary: dict,
             dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-            // FIX: Added nodeColors to the visuals object
-            visuals: { nodes: [n1, n2, n3], ops: [op1, op2], isReverse, nodeColors },
-            textQuery: `NET EFFECT: ${n1} on ${n3}`,
-            logicProof: `${link1===1?'+':'-'} * ${link2===1?'+':'-'} = ${result==='TRIGGER'?'+':'-'}`
+            visuals: { 
+                nodes, 
+                nodeColors: colors,
+                ops: [op1, op2],
+                isReverse 
+            },
+            textQuery: `NET EFFECT: ${nodes[0]} on ${nodes[2]}`,
+            logicProof: `(N1:${colors[0]} + ${op1} -> ${checkPass(op1, colors[0])?'Pass':'Block'}) -> (N2:${colors[1]} + ${op2})`
         },
         result
     };
@@ -463,9 +500,11 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
               <br/><br/>
               <strong>Rule:</strong> <span className="text-white font-mono bg-black px-1 rounded">BLOCK_RED</span> stops Red nodes but allows Blue nodes to pass.
               <br/>
-              <strong>Calculation:</strong> Does the signal survive Link 1? If yes, does it survive Link 2?
+              <strong>Calculation:</strong> The signal must survive <strong>BOTH</strong> links to Trigger.
               <br/>
-              <em className="text-xs opacity-50">Watch the Arrow Direction!</em>
+              <span className="text-white font-mono bg-black px-1 rounded">PASS</span> + <span className="text-white font-mono bg-black px-1 rounded">PASS</span> = <strong>TRIGGER</strong>.
+              <br/>
+              <em className="text-xs opacity-50">Any Block = Dead Signal.</em>
             </p>
           </div>
           {/* 6. Spatial */}
