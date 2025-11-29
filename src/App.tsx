@@ -234,30 +234,172 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): 
     };
 };
 
-// 5. FLUX CAUSAL
+// 5. FLUX CAUSAL (Chromatic Gating / Conditional Flow)
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['TRIGGER', 'BLOCK']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const codeAct1 = generateCode([]); const codeAct2 = generateCode([codeAct1]); const codeInh1 = generateCode([codeAct1, codeAct2]); const codeInh2 = generateCode([codeAct1, codeAct2, codeInh1]);
-    const dict = shuffleEntries({ [codeAct1]: 'ACTIVATE', [codeAct2]: 'ACTIVATE', [codeInh1]: 'INHIBIT', [codeInh2]: 'INHIBIT' });
-    const acts = [codeAct1, codeAct2]; const inhs = [codeInh1, codeInh2];
-    const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R']; const nodes = shuffleArray(pool).slice(0, 3); const n1 = nodes[0], n2 = nodes[1], n3 = nodes[2]; 
-    let link1 = Math.random() > 0.5 ? 1 : -1; let link2 = result === 'TRIGGER' ? link1 : -link1;
-    const op1 = link1 === 1 ? getRandomItem(acts) : getRandomItem(inhs); const pool2 = link2 === 1 ? acts : inhs; const op2 = getRandomItem(pool2.filter(op => op !== op1));
+    const relations = ['TRIGGER', 'BLOCK'];
+    let result = getRandomItem(relations);
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  
+    // 1. Generate Codes
+    const codeBlockRed = generateCode([]);
+    const codeBlockBlue = generateCode([codeBlockRed]);
+    const codeTrigger = generateCode([codeBlockRed, codeBlockBlue]);
+
+    const dict = shuffleEntries({ 
+        [codeBlockRed]: 'BLOCK_IF_RED', 
+        [codeBlockBlue]: 'BLOCK_IF_BLUE',
+        [codeTrigger]: 'PASS_THROUGH'
+    });
+
+    // 2. Generate Nodes with Colors
+    const poolLabels = ['A', 'B', 'C', 'X', 'Y', 'Z'];
+    const labels = shuffleArray(poolLabels).slice(0, 3);
+    
+    // Random colors for nodes: Red or Blue
+    const colors = [Math.random() > 0.5 ? 'RED' : 'BLUE', Math.random() > 0.5 ? 'RED' : 'BLUE', Math.random() > 0.5 ? 'RED' : 'BLUE'];
+    
+    // 3. Construct Chain to match Result
+    // Chain: N1 -> Link1 -> N2 -> Link2 -> N3
+    // We need to pick Link1 and Link2 such that the final outcome is 'result'.
+    
+    // Helper: returns true if flow passes
+    const testLink = (op: string, sourceColor: string) => {
+        if (op === codeTrigger) return true;
+        if (op === codeBlockRed && sourceColor === 'RED') return false; // Blocked
+        if (op === codeBlockBlue && sourceColor === 'BLUE') return false; // Blocked
+        return true; // Pass through (e.g. BlockRed but source is Blue)
+    };
+
+    let op1 = codeTrigger;
+    let op2 = codeTrigger;
+    
+    // Attempt to find a combo that works (Brute force is easiest here since space is tiny)
+    let found = false;
+    const ops = [codeBlockRed, codeBlockBlue, codeTrigger];
+    
+    for (let i = 0; i < 20; i++) {
+        const t1 = getRandomItem(ops);
+        const t2 = getRandomItem(ops);
+        
+        // Trace Logic
+        // Step 1: Does signal leave N1?
+        const pass1 = testLink(t1, colors[0]);
+        // Step 2: Does signal leave N2? (Only if it arrived at N2)
+        const pass2 = pass1 ? testLink(t2, colors[1]) : false;
+        
+        const outcome = pass2 ? 'TRIGGER' : 'BLOCK';
+        
+        if (outcome === result) {
+            op1 = t1;
+            op2 = t2;
+            found = true;
+            break;
+        }
+    }
+    
+    // If brute force failed (rare edge cases), force a trivial match
+    if (!found) {
+        // If we want TRIGGER, just make everything PASS
+        if (result === 'TRIGGER') { op1 = codeTrigger; op2 = codeTrigger; }
+        // If we want BLOCK, block the first one based on color
+        else { op1 = colors[0] === 'RED' ? codeBlockRed : codeBlockBlue; op2 = codeTrigger; }
+    }
+
     const isReverse = Math.random() > 0.5;
-    return { stim: { type: 'FLUX_CAUSAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { nodes: [n1, n2, n3], ops: [op1, op2], isReverse }, textQuery: `NET EFFECT: ${n1} on ${n3}`, logicProof: `${link1===1?'+':'-'} * ${link2===1?'+':'-'} = ${result==='TRIGGER'?'+':'-'}` }, result };
+
+    return {
+        stim: {
+            type: 'FLUX_CAUSAL',
+            dictionary: dict,
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+            visuals: { 
+                nodes: labels, 
+                nodeColors: colors,
+                ops: [op1, op2],
+                isReverse 
+            },
+            textQuery: `NET EFFECT: ${labels[0]} on ${labels[2]}`,
+            logicProof: `(N1:${colors[0]} + ${op1} = ${testLink(op1, colors[0])?'Pass':'Block'}) -> (N2:${colors[1]} + ${op2})`
+        },
+        result
+    };
 };
 
-// 6. FLUX SPATIAL
+// 6. FLUX SPATIAL (Rotational Delta / Frame Transformation)
 const generateFluxSpatial = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['NORTH_EAST', 'NORTH_WEST', 'SOUTH_EAST', 'SOUTH_WEST']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const codeN = generateCode([]); const codeS = generateCode([codeN]); const codeE = generateCode([codeN, codeS]); const codeW = generateCode([codeN, codeS, codeE]);
-    const dict = shuffleEntries({ [codeN]: 'NORTH', [codeS]: 'SOUTH', [codeE]: 'EAST', [codeW]: 'WEST' });
-    let moves: string[] = []; 
-    if (result === 'NORTH_EAST') moves = [codeN, codeE]; if (result === 'NORTH_WEST') moves = [codeN, codeW]; if (result === 'SOUTH_EAST') moves = [codeS, codeE]; if (result === 'SOUTH_WEST') moves = [codeS, codeW];
-    moves = shuffleArray(moves);
-    return { stim: { type: 'FLUX_SPATIAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { sequence: moves }, textQuery: 'NET VECTOR FROM START', logicProof: `Sum(${moves.join(', ')}) = ${result}` }, result };
+    // Result categories: The CHANGE in heading relative to start
+    const relations = ['NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP'];
+    let result = getRandomItem(relations);
+    
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+
+    // Arbitrary Codes for Rotational Actions
+    const codeFwd = generateCode([]); // Maintains heading
+    const codeR = generateCode([codeFwd]); // +90
+    const codeL = generateCode([codeFwd, codeR]); // -90
+    const codeU = generateCode([codeFwd, codeR, codeL]); // +180
+    
+    const dict = shuffleEntries({ 
+        [codeFwd]: 'FORWARD', 
+        [codeR]: 'TURN_RIGHT', 
+        [codeL]: 'TURN_LEFT', 
+        [codeU]: 'U_TURN' 
+    });
+
+    // We need to construct a sequence that results in the target rotation.
+    // Let's use a 3-step sequence for complexity.
+    
+    let validSequence: string[] = [];
+    
+    // Attempt to generate a valid sequence
+    let attempts = 0;
+    while (validSequence.length === 0 && attempts < 50) {
+        attempts++;
+        const ops = [codeFwd, codeR, codeL, codeU];
+        // Pick 3 random moves
+        const seq = [getRandomItem(ops), getRandomItem(ops), getRandomItem(ops)];
+        
+        let rotation = 0; // 0=0, 1=90, 2=180, 3=270(-90)
+        
+        for (const move of seq) {
+            if (move === codeR) rotation = (rotation + 1) % 4;
+            else if (move === codeL) rotation = (rotation + 3) % 4;
+            else if (move === codeU) rotation = (rotation + 2) % 4;
+            // Fwd does not change rotation
+        }
+        
+        let outcome = '';
+        if (rotation === 0) outcome = 'NO_CHANGE';
+        else if (rotation === 1) outcome = '90_RIGHT';
+        else if (rotation === 2) outcome = '180_FLIP';
+        else if (rotation === 3) outcome = '90_LEFT';
+        
+        if (outcome === result) {
+            validSequence = seq;
+        }
+    }
+    
+    // Fallback if random gen fails
+    if (validSequence.length === 0) {
+        if (result === 'NO_CHANGE') validSequence = [codeR, codeL, codeFwd];
+        if (result === '90_RIGHT') validSequence = [codeFwd, codeR, codeFwd];
+        if (result === '90_LEFT') validSequence = [codeFwd, codeL, codeFwd];
+        if (result === '180_FLIP') validSequence = [codeR, codeR, codeFwd];
+    }
+
+    return {
+        stim: {
+            type: 'FLUX_SPATIAL',
+            dictionary: dict,
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+            visuals: { sequence: validSequence },
+            textQuery: 'NET HEADING CHANGE',
+            logicProof: `Start(North) + [${validSequence.length} Steps] = ${result}`
+        },
+        result
+    };
 };
 
 // 7. FLUX DEICTIC (Corrected 180-Degree Logic)
@@ -460,26 +602,28 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
           {/* 5. Causal */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">5. CAUSAL</div>
-            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Flow Check</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Chromatic Gating</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Does the signal get through? Count the Inhibitors.
+              Trace the signal flow. Gates are conditional based on <strong>Node Color</strong>.
               <br/><br/>
-              <strong>Calculation:</strong> Block (-) + Block (-) = <span className="text-white font-mono bg-black px-1 rounded">TRIGGER (+)</span>.
+              <strong>Rule:</strong> <span className="text-white font-mono bg-black px-1 rounded">BLOCK_RED</span> stops Red nodes but allows Blue nodes to pass.
               <br/>
-              <em className="text-xs opacity-50">Double Negative Logic.</em>
+              <strong>Calculation:</strong> Does the signal survive Link 1? If yes, does it survive Link 2?
+              <br/>
+              <em className="text-xs opacity-50">Watch the Arrow Direction!</em>
             </p>
           </div>
 
           {/* 6. Spatial */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">6. SPATIAL</div>
-            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Dead Reckoning</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Relative Heading</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              You start at (0,0). The grid is invisible.
+              You are a compass needle starting <strong>NORTH</strong>. Codes are relative turns.
               <br/><br/>
-              <strong>Calculation:</strong> Sum the vectors.
+              <strong>Calculation:</strong> Track your rotation state.
               <br/>
-              North (0,1) + East (1,0) = <span className="text-white font-mono bg-black px-1 rounded">NORTH-EAST</span>.
+              Start(N) + Turn Right(90) + Turn Right(90) = <span className="text-white font-mono bg-black px-1 rounded">180_FLIP</span> (South).
             </p>
           </div>
 
@@ -570,12 +714,52 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
       return (<div className="relative flex items-end justify-center h-48 w-64 md:w-80 gap-8 md:gap-16"><div className="z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-800 rounded-full border-2 border-slate-600 flex items-center justify-center text-xl md:text-2xl font-black text-white shadow-lg">{nodes[0]}</div><div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-900 rounded-full border-2 border-purple-500/50 flex items-center justify-center text-xl md:text-2xl font-black text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]">{nodes[1]}</div><div className="z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-800 rounded-full border-2 border-slate-600 flex items-center justify-center text-xl md:text-2xl font-black text-white shadow-lg">{nodes[2]}</div><svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"><line x1="20%" y1="80%" x2="50%" y2="20%" stroke="#475569" strokeWidth="2" /><line x1="80%" y1="80%" x2="50%" y2="20%" stroke="#475569" strokeWidth="2" /></svg><div className="absolute top-[40%] left-[30%] -translate-x-1/2 -translate-y-1/2 bg-black border border-slate-700 rounded px-1.5 py-0.5 z-20"><span className="text-emerald-400 text-lg md:text-xl font-bold">{linkAB}</span></div><div className="absolute top-[40%] right-[30%] translate-x-1/2 -translate-y-1/2 bg-black border border-slate-700 rounded px-1.5 py-0.5 z-20"><span className="text-emerald-400 text-lg md:text-xl font-bold">{linkBC}</span></div></div>)
   }
 
+  // 5. CAUSAL (Chromatic Gating)
   if (stim.type === 'FLUX_CAUSAL') {
-      const { nodes, ops, isReverse } = stim.visuals;
+      const { nodes, nodeColors, ops, isReverse } = stim.visuals;
+      
       const renderNodes = isReverse ? [...nodes].reverse() : nodes;
+      const renderColors = isReverse ? [...nodeColors].reverse() : nodeColors;
       const renderOps = isReverse ? [...ops].reverse() : ops;
       const arrowRotation = isReverse ? 'rotate-180' : '';
-      return (<div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100"><div className="px-4 py-3 bg-slate-800 rounded-lg text-white font-bold border border-slate-600 shadow-lg">{renderNodes[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="px-3 py-2 bg-slate-900 text-slate-400 text-sm rounded border border-slate-800 font-mono">{renderNodes[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="px-4 py-3 bg-slate-800 rounded-lg text-white font-bold border border-slate-600 shadow-lg">{renderNodes[2]}</div></div>)
+
+      const getNodeStyle = (color: string) => 
+          color === 'RED' 
+          ? 'border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.3)]' 
+          : 'border-blue-500 text-blue-100 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+
+      return (
+          <div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100">
+             {/* Node 1 */}
+             <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[0])}`}>
+                 {renderNodes[0]}
+             </div>
+             
+             {/* Link 1 */}
+             <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+             <div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl">
+                 {renderOps[0]}
+             </div>
+             <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+
+             {/* Node 2 */}
+             <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[1])}`}>
+                 {renderNodes[1]}
+             </div>
+
+             {/* Link 2 */}
+             <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+             <div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl">
+                 {renderOps[1]}
+             </div>
+             <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+
+             {/* Node 3 */}
+             <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[2])}`}>
+                 {renderNodes[2]}
+             </div>
+          </div>
+      )
   }
 
   if (stim.type === 'FLUX_SPATIAL') {
