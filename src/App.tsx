@@ -360,15 +360,19 @@ const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean): { 
 const getComplexityCost = (stim: StimulusData): number => {
   if (stim.isNegated) return 4; 
   switch (stim.type) {
-    case 'FLUX_FEATURE': return 1;
-    case 'FLUX_COMPARISON': return 2;
-    case 'FLUX_OPPOSITION': return 2;
-    case 'FLUX_HIERARCHY': return 3;
-    case 'FLUX_CAUSAL': return 3;
-    case 'FLUX_SPATIAL': return 3;
-    case 'FLUX_DEICTIC': return stim.visuals.timeFrame === 'THEN' ? 6 : 4;
-    case 'FLUX_CONDITIONAL': return 5;
-    case 'FLUX_ANALOGY': return 5;
+    case 'FLUX_FEATURE': return 1;    // Simple Matching
+    case 'FLUX_COMPARISON': return 2; // Context + 2 Variables
+    case 'FLUX_OPPOSITION': return 2; // Linear Math
+    case 'FLUX_HIERARCHY': return 3;  // Tree Traversal
+    case 'FLUX_SPATIAL': return 3;    // Vector Sum
+    
+    // Bumped Causal to 4 because Chromatic Gating requires 
+    // two distinct conditional checks (Link 1 & Link 2).
+    case 'FLUX_CAUSAL': return 4;     
+    
+    case 'FLUX_DEICTIC': return stim.visuals.timeFrame === 'THEN' ? 6 : 4; 
+    case 'FLUX_CONDITIONAL': return 5; // Stroop Interference
+    case 'FLUX_ANALOGY': return 5;     // Meta-Matching
     default: return 1;
   }
 };
