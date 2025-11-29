@@ -98,7 +98,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 // --- Meta Modifier: Applies Negation and Wildcards ---
-const applyMetaModifiers = (data: { stim: StimulusData, result: string }, activeElo: number): { stim: StimulusData, result: string } => {
+const applyMetaModifiers = (data: { stim: StimulusData, result: string }): { stim: StimulusData, result: string } => {
     let { stim, result } = data;
     
     // 1. NEGATION CURSE (20% chance if Elo > 1000) -- NOT elo locked
@@ -125,7 +125,7 @@ const applyMetaModifiers = (data: { stim: StimulusData, result: string }, active
     }
 
     // 2. WILDCARD QUERY (15% chance if Elo > 1200)
-    if (!stim.isNegated && activeElo > 1200 && Math.random() < 0.15) {
+    if (!stim.isNegated && Math.random() < 0.15) {
         stim.isWildcard = true;
         let answer = '';
 
@@ -616,7 +616,7 @@ export default function ProjectOmegaUltimate() {
     // --- APPLY META MODIFIERS (Negation + Wildcards) ---
     // Note: Repair Mode disables meta-modifiers to keep drilling pure.
     if (!isRepairMode) {
-        turnData = applyMetaModifiers(turnData, activeElo);
+        turnData = applyMetaModifiers(turnData);
     }
 
     const newItem: HistoryItem = { result: turnData.result, stimulus: turnData.stim };
