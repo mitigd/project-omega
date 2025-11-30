@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  History, CheckCircle, XCircle, Zap, FastForward, Code, 
+import {
+  History, CheckCircle, XCircle, Zap, FastForward, Code,
   ArrowRight, Settings, Save, Activity,
   BrainCircuit, Network, Cpu, Clock, Split, Scan,
-  Compass, HelpCircle, Eye, EyeOff, Wrench, BookOpen, 
+  Compass, HelpCircle, Eye, EyeOff, Wrench, BookOpen,
   X, Ban
 } from 'lucide-react';
 
@@ -11,16 +11,16 @@ import {
 
 type GamePhase = 'IDLE' | 'WARMUP' | 'PLAYING' | 'FEEDBACK';
 
-type GeneratorType = 
-  | 'FLUX_FEATURE'    
-  | 'FLUX_COMPARISON' 
-  | 'FLUX_OPPOSITION' 
-  | 'FLUX_HIERARCHY'  
-  | 'FLUX_CAUSAL'     
-  | 'FLUX_SPATIAL'    
-  | 'FLUX_DEICTIC'    
+type GeneratorType =
+  | 'FLUX_FEATURE'
+  | 'FLUX_COMPARISON'
+  | 'FLUX_OPPOSITION'
+  | 'FLUX_HIERARCHY'
+  | 'FLUX_CAUSAL'
+  | 'FLUX_SPATIAL'
+  | 'FLUX_DEICTIC'
   | 'FLUX_CONDITIONAL'
-  | 'FLUX_ANALOGY';   
+  | 'FLUX_ANALOGY';
 
 type DictionaryPos = 'LEFT' | 'RIGHT';
 
@@ -30,10 +30,10 @@ interface StimulusData {
   type: GeneratorType;
   dictionary: ContextDictionary;
   dictionaryPos: DictionaryPos;
-  visuals: any; 
+  visuals: any;
   textQuery: string;
-  logicProof: string; 
-  contextColors?: string[]; 
+  logicProof: string;
+  contextColors?: string[];
   isNegated?: boolean; // Kept Negation
 }
 
@@ -52,14 +52,14 @@ interface LogEntry {
   isMatch: boolean;
   isCorrect: boolean;
   reactionTime: number;
-  isRepair?: boolean; 
+  isRepair?: boolean;
 }
 
 interface GameConfig {
   nBackLevel: number;
-  baseTimer: number; 
+  baseTimer: number;
   isPracticeMode: boolean;
-  practiceType?: GeneratorType; 
+  practiceType?: GeneratorType;
 }
 
 // --- Generators ---
@@ -68,7 +68,7 @@ const NONSENSE_SYLLABLES = ['ZID', 'LUM', 'VEX', 'KOR', 'JAX', 'QIN', 'YOM', 'TE
 const SHAPES = ['SQUARE', 'CIRCLE', 'TRIANGLE', 'DIAMOND'];
 const COLORS = ['RED', 'BLUE', 'GREEN', 'YELLOW'];
 const DIRECTIONS = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
-const ICONS = ['♦', '★', '▲', '▼', '●', '■', '⚡', '❄', '∞', '§']; 
+const ICONS = ['♦', '★', '▲', '▼', '●', '■', '⚡', '❄', '∞', '§'];
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -98,31 +98,31 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 // --- Meta Modifier: Applies Negation Only ---
 const applyMetaModifiers = (data: { stim: StimulusData, result: string }): { stim: StimulusData, result: string } => {
-    let { stim, result } = data;
-    
-    // NEGATION CURSE (40% chance, No Elo Lock for testing)
-    if (Math.random() < 0.40) {
-        let invertedResult = result;
-        const opposites: Record<string, string> = {
-            'GREATER': 'LESSER', 'LESSER': 'GREATER',
-            'SAME': 'OPPOSITE', 'OPPOSITE': 'SAME', 'DIFFERENT': 'SAME', 
-            'HIGHER': 'LOWER', 'LOWER': 'HIGHER',
-            'TRIGGER': 'BLOCK', 'BLOCK': 'TRIGGER',
-            'LEFT': 'RIGHT', 'RIGHT': 'LEFT', 'FRONT': 'BACK', 'BACK': 'FRONT',
-            'RED': 'BLUE', 'BLUE': 'RED',
-            'ANALOGOUS': 'NON_ANALOGOUS', 'NON_ANALOGOUS': 'ANALOGOUS',
-            'MATCH_COLOR': 'NONE', 'MATCH_SHAPE': 'NONE', 'EXACT': 'NONE'
-        };
+  let { stim, result } = data;
 
-        if (opposites[result]) {
-            stim.isNegated = true;
-            stim.dictionary['NIX'] = 'NOT (INVERT)'; 
-            invertedResult = opposites[result];
-            stim.logicProof = `NOT(${stim.logicProof}) = ${invertedResult}`;
-            result = invertedResult;
-        }
+  // NEGATION CURSE (40% chance, No Elo Lock for testing)
+  if (Math.random() < 0.40) {
+    let invertedResult = result;
+    const opposites: Record<string, string> = {
+      'GREATER': 'LESSER', 'LESSER': 'GREATER',
+      'SAME': 'OPPOSITE', 'OPPOSITE': 'SAME', 'DIFFERENT': 'SAME',
+      'HIGHER': 'LOWER', 'LOWER': 'HIGHER',
+      'TRIGGER': 'BLOCK', 'BLOCK': 'TRIGGER',
+      'LEFT': 'RIGHT', 'RIGHT': 'LEFT', 'FRONT': 'BACK', 'BACK': 'FRONT',
+      'RED': 'BLUE', 'BLUE': 'RED',
+      'ANALOGOUS': 'NON_ANALOGOUS', 'NON_ANALOGOUS': 'ANALOGOUS',
+      'MATCH_COLOR': 'NONE', 'MATCH_SHAPE': 'NONE', 'EXACT': 'NONE'
+    };
+
+    if (opposites[result]) {
+      stim.isNegated = true;
+      stim.dictionary['NIX'] = 'NOT (INVERT)';
+      invertedResult = opposites[result];
+      stim.logicProof = `NOT(${stim.logicProof}) = ${invertedResult}`;
+      result = invertedResult;
     }
-    return { stim, result };
+  }
+  return { stim, result };
 };
 
 
@@ -140,7 +140,7 @@ const generateFluxFeature = (prevResult: string | null, forceMatch: boolean): { 
   else if (result === 'NONE') { end.shape = getRandomItem(SHAPES.filter(s => s !== start.shape)); end.color = getRandomItem(COLORS.filter(c => c !== start.color)); }
   let activeCode = '';
   if (result === 'MATCH_COLOR') activeCode = codeColor; else if (result === 'MATCH_SHAPE') activeCode = codeShape; else if (result === 'EXACT') activeCode = codeExact; else activeCode = getRandomItem([codeColor, codeShape, codeExact]);
-  return { stim: { type: 'FLUX_FEATURE', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { start, end }, textQuery: `VERIFY: ${activeCode}`, logicProof: `(Color: ${start.color===end.color?'=':'!='}) & (Shape: ${start.shape===end.shape?'=':'!='})` }, result };
+  return { stim: { type: 'FLUX_FEATURE', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { start, end }, textQuery: `VERIFY: ${activeCode}`, logicProof: `(Color: ${start.color === end.color ? '=' : '!='}) & (Shape: ${start.shape === end.shape ? '=' : '!='})` }, result };
 };
 
 // 2. FLUX COMPARISON
@@ -153,9 +153,9 @@ const generateFluxComparison = (prevResult: string | null, forceMatch: boolean):
   const visualSwap = Math.random() > 0.5; const visualLeft = visualSwap ? leaf2 : leaf1; const visualRight = visualSwap ? leaf1 : leaf2;
   const colorOptions = [{ name: 'RED', class: 'from-red-900/40 to-red-900/10' }, { name: 'BLUE', class: 'from-blue-900/40 to-blue-900/10' }, { name: 'GREEN', class: 'from-emerald-900/40 to-emerald-900/10' }, { name: 'PURPLE', class: 'from-purple-900/40 to-purple-900/10' }];
   const c1 = getRandomItem(colorOptions); const c2 = getRandomItem(colorOptions.filter(c => c.name !== c1.name));
-  const iconBase = getRandomItem(ICONS); const meaning1 = Math.random() > 0.5 ? '>' : '<'; const meaning2 = meaning1 === '>' ? '<' : '>';   
+  const iconBase = getRandomItem(ICONS); const meaning1 = Math.random() > 0.5 ? '>' : '<'; const meaning2 = meaning1 === '>' ? '<' : '>';
   const dict = shuffleEntries({ [`${iconBase} (${c1.name})`]: meaning1, [`${iconBase} (${c2.name})`]: meaning2 });
-  let targetRel1 = result === 'GREATER' ? '>' : '<'; let targetRel2 = result === 'GREATER' ? '<' : '>'; 
+  let targetRel1 = result === 'GREATER' ? '>' : '<'; let targetRel2 = result === 'GREATER' ? '<' : '>';
   const colorForLeaf1 = meaning1 === targetRel1 ? c1 : c2; const colorForLeaf2 = meaning2 === targetRel2 ? c2 : c1;
   const visualLeftColor = visualSwap ? colorForLeaf2 : colorForLeaf1; const visualRightColor = visualSwap ? colorForLeaf1 : colorForLeaf2;
   return { stim: { type: 'FLUX_COMPARISON', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', contextColors: [visualLeftColor.class, visualRightColor.class], visuals: { hub, leftLeaf: visualLeft, rightLeaf: visualRight, icon: iconBase, isSwapped: visualSwap }, textQuery: `DERIVE: ${leaf1} vs ${leaf2}`, logicProof: result === 'GREATER' ? `(${leaf1} > ${hub} > ${leaf2})` : `(${leaf1} < ${hub} < ${leaf2})` }, result };
@@ -170,147 +170,153 @@ const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean):
   const c1 = getRandomItem(ICONS); const c2 = getRandomItem(ICONS.filter(i => i !== c1)); const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i))); const cNeutral = getRandomItem(ICONS.filter(i => ![c1, c2, c3, c4].includes(i)));
   const dict = shuffleEntries({ [c1]: 'IDENTICAL', [c2]: 'IDENTICAL', [c3]: 'INVERT', [c4]: 'INVERT', [cNeutral]: 'NEUTRAL' });
   const sameIcons = [c1, c2]; const oppIcons = [c3, c4]; let link1Type = 'SAME', link2Type = 'SAME';
-  if (result === 'DIFFERENT') { if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } } 
-  else if (result === 'SAME') { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type; } 
+  if (result === 'DIFFERENT') { if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } }
+  else if (result === 'SAME') { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type; }
   else { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME'; }
   const getIcon = (type: string) => { if (type === 'NEUTRAL') return cNeutral; if (type === 'SAME') return getRandomItem(sameIcons); return getRandomItem(oppIcons); };
-  const icon1 = getIcon(link1Type); 
-  const pool2 = (type: string) => type === 'NEUTRAL' ? [cNeutral] : (type==='SAME' ? sameIcons : oppIcons);
-  const icon2 = getRandomItem(pool2(link2Type).filter(i => i !== icon1)) || icon1; 
-  const isSwapped = Math.random() > 0.5; const visualChain = isSwapped ? [ { l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 } ] : [ { l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 } ];
+  const icon1 = getIcon(link1Type);
+  const pool2 = (type: string) => type === 'NEUTRAL' ? [cNeutral] : (type === 'SAME' ? sameIcons : oppIcons);
+  const icon2 = getRandomItem(pool2(link2Type).filter(i => i !== icon1)) || icon1;
+  const isSwapped = Math.random() > 0.5; const visualChain = isSwapped ? [{ l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 }] : [{ l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 }];
   return { stim: { type: 'FLUX_OPPOSITION', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { chain: visualChain }, textQuery: `DERIVE: ${n1} vs ${n3}`, logicProof: `${link1Type} + ${link2Type} = ${result}` }, result };
 };
 
 // 4. FLUX HIERARCHY
 const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['HIGHER', 'LOWER', 'SAME']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const c1 = getRandomItem(ICONS); const c2 = getRandomItem(ICONS.filter(i => i !== c1)); const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
-    const dict = shuffleEntries({ [c1]: 'PARENT_OF', [c2]: 'PARENT_OF', [c3]: 'CHILD_OF', [c4]: 'CHILD_OF' });
-    const parentIcons = [c1, c2]; const childIcons = [c3, c4];
-    const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L', 'Q', 'R', 'S']; const nodes = shuffleArray(pool).slice(0, 3); 
-    const isReverseQuery = Math.random() > 0.5;
-    let requiredVisual = result;
-    if (isReverseQuery) { if (result === 'HIGHER') requiredVisual = 'LOWER'; else if (result === 'LOWER') requiredVisual = 'HIGHER'; }
-    let link1Type = 0; let link2Type = 0; 
-    if (requiredVisual === 'HIGHER') { link1Type = 1; link2Type = 1; } else if (requiredVisual === 'LOWER') { link1Type = -1; link2Type = -1; } else { if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } else { link1Type = 1; link2Type = -1; } }
-    const iconAB = link1Type === 1 ? getRandomItem(parentIcons) : getRandomItem(childIcons);
-    const poolBC = link2Type === 1 ? parentIcons : childIcons; const iconBC = getRandomItem(poolBC.filter(i => i !== iconAB));
-    const queryText = isReverseQuery ? `GENERATION: ${nodes[2]} vs ${nodes[0]}` : `GENERATION: ${nodes[0]} vs ${nodes[2]}`;
-    const visualNet = link1Type + link2Type;
-    const proofString = isReverseQuery ? `Visual(${visualNet}) * Flip = ${result}` : `Net: ${visualNet} = ${result}`;
-    return { stim: { type: 'FLUX_HIERARCHY', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, textQuery: queryText, logicProof: proofString }, result };
+  const relations = ['HIGHER', 'LOWER', 'SAME']; let result = getRandomItem(relations);
+  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  const c1 = getRandomItem(ICONS); const c2 = getRandomItem(ICONS.filter(i => i !== c1)); const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
+  const dict = shuffleEntries({ [c1]: 'PARENT_OF', [c2]: 'PARENT_OF', [c3]: 'CHILD_OF', [c4]: 'CHILD_OF' });
+  const parentIcons = [c1, c2]; const childIcons = [c3, c4];
+  const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L', 'Q', 'R', 'S']; const nodes = shuffleArray(pool).slice(0, 3);
+  const isReverseQuery = Math.random() > 0.5;
+  let requiredVisual = result;
+  if (isReverseQuery) { if (result === 'HIGHER') requiredVisual = 'LOWER'; else if (result === 'LOWER') requiredVisual = 'HIGHER'; }
+  let link1Type = 0; let link2Type = 0;
+  if (requiredVisual === 'HIGHER') { link1Type = 1; link2Type = 1; } else if (requiredVisual === 'LOWER') { link1Type = -1; link2Type = -1; } else { if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } else { link1Type = 1; link2Type = -1; } }
+  const iconAB = link1Type === 1 ? getRandomItem(parentIcons) : getRandomItem(childIcons);
+  const poolBC = link2Type === 1 ? parentIcons : childIcons; const iconBC = getRandomItem(poolBC.filter(i => i !== iconAB));
+  const queryText = isReverseQuery ? `GENERATION: ${nodes[2]} vs ${nodes[0]}` : `GENERATION: ${nodes[0]} vs ${nodes[2]}`;
+  const visualNet = link1Type + link2Type;
+  const proofString = isReverseQuery ? `Visual(${visualNet}) * Flip = ${result}` : `Net: ${visualNet} = ${result}`;
+  return { stim: { type: 'FLUX_HIERARCHY', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, textQuery: queryText, logicProof: proofString }, result };
 };
 
-// 5. FLUX CAUSAL (Chromatic Gating + Polysemy)
+// 5. FLUX CAUSAL (Viral Propagation / State Mutation)
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['TRIGGER', 'BLOCK'];
-    let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
-    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-  
-    // 1. Generate Synonyms (2 codes per rule)
-    const c1 = generateCode([]); const c2 = generateCode([c1]);
-    const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
-    const c5 = generateCode([c1, c2, c3, c4]); const c6 = generateCode([c1, c2, c3, c4, c5]);
+  // Result is the FINAL COLOR of the last node (RED or BLUE)
+  const relations = ['RED', 'BLUE'];
+  let result = getRandomItem(relations);
+  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
+  else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
 
-    const dict = shuffleEntries({ 
-        [c1]: 'BLOCK_RED', [c2]: 'BLOCK_RED',
-        [c3]: 'BLOCK_BLUE', [c4]: 'BLOCK_BLUE',
-        [c5]: 'PASS', [c6]: 'PASS'
-    });
+  // 1. Generate Synonyms
+  const c1 = generateCode([]); const c2 = generateCode([c1]);
+  const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
 
-    const blockRedCodes = [c1, c2];
-    const blockBlueCodes = [c3, c4];
-    const passCodes = [c5, c6];
+  const dict = shuffleEntries({
+    [c1]: 'INFECT_MATCH', [c2]: 'INFECT_MATCH',
+    [c3]: 'INFECT_DIFF', [c4]: 'INFECT_DIFF'
+  });
 
-    // 2. Generate Nodes & Colors
-    const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
-    const nodes = shuffleArray(pool).slice(0, 3);
-    const colors = [
-        Math.random() > 0.5 ? 'RED' : 'BLUE', 
-        Math.random() > 0.5 ? 'RED' : 'BLUE', 
-        Math.random() > 0.5 ? 'RED' : 'BLUE'
-    ];
+  const matchOps = [c1, c2];
+  const diffOps = [c3, c4];
 
-    // 3. Helper to check if flow passes
-    const checkPass = (op: string, color: string) => {
-        if (passCodes.includes(op)) return true;
-        if (blockRedCodes.includes(op) && color === 'RED') return false;
-        if (blockBlueCodes.includes(op) && color === 'BLUE') return false;
-        return true; // e.g. BlockRed on Blue node -> Pass
-    };
+  // 2. Generate Nodes & Initial Colors
+  const pool = ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
+  const nodes = shuffleArray(pool).slice(0, 3);
+  const colors = [
+    Math.random() > 0.5 ? 'RED' : 'BLUE',
+    Math.random() > 0.5 ? 'RED' : 'BLUE',
+    Math.random() > 0.5 ? 'RED' : 'BLUE'
+  ];
 
-    // 4. Find a valid chain for the desired result
-    let op1 = c5;
-    let op2 = c5;
-    
-    // Brute force a valid combination
-    let found = false;
-    const allOps = [...blockRedCodes, ...blockBlueCodes, ...passCodes];
-    
-    for (let i = 0; i < 50; i++) {
-        const t1 = getRandomItem(allOps);
-        const t2 = getRandomItem(allOps);
-        
-        // Trace: N1 -> t1 -> N2 -> t2 -> N3
-        // Note: For Link 2, the source is N2.
-        
-        const pass1 = checkPass(t1, colors[0]);
-        const pass2 = pass1 ? checkPass(t2, colors[1]) : false; // If 1 blocked, 2 never happens
-        
-        const outcome = pass2 ? 'TRIGGER' : 'BLOCK';
-        
-        if (outcome === result) {
-            op1 = t1;
-            op2 = t2;
-            found = true;
-            break;
-        }
-    }
-    
-    // Fail-safe
-    if (!found) {
-        if (result === 'TRIGGER') { op1 = getRandomItem(passCodes); op2 = getRandomItem(passCodes); }
-        else { op1 = colors[0] === 'RED' ? getRandomItem(blockRedCodes) : getRandomItem(blockBlueCodes); op2 = getRandomItem(passCodes); }
+  // 3. Logic Simulator
+  // We need to find op1 and op2 that result in the desired final color for Node 3.
+
+  // Helper: Returns new color of dest node after interaction
+  const applyVirus = (op: string, sourceColor: string, destColor: string) => {
+    let success = false;
+    if (matchOps.includes(op)) {
+      success = (sourceColor === destColor);
+    } else {
+      success = (sourceColor !== destColor);
     }
 
-    const isReverse = Math.random() > 0.5;
+    // If success, Dest flips. If fail, Dest stays.
+    if (success) {
+      return destColor === 'RED' ? 'BLUE' : 'RED';
+    }
+    return destColor;
+  };
 
-    return {
-        stim: {
-            type: 'FLUX_CAUSAL',
-            dictionary: dict,
-            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
-            visuals: { 
-                nodes, 
-                nodeColors: colors,
-                ops: [op1, op2],
-                isReverse 
-            },
-            textQuery: `NET EFFECT: ${nodes[0]} on ${nodes[2]}`,
-            logicProof: `(N1:${colors[0]} + ${op1} -> ${checkPass(op1, colors[0])?'Pass':'Block'}) -> (N2:${colors[1]} + ${op2})`
-        },
-        result
-    };
+  let op1 = c1;
+  let op2 = c1;
+  let found = false;
+  const allOps = [...matchOps, ...diffOps];
+
+  // Brute force a valid path
+  for (let i = 0; i < 50; i++) {
+    const t1 = getRandomItem(allOps);
+    const t2 = getRandomItem(allOps);
+
+    // Simulation Trace:
+    // Step 1: N1 acts on N2
+    const n2FinalColor = applyVirus(t1, colors[0], colors[1]);
+
+    // Step 2: N2 (NEW COLOR) acts on N3
+    const n3FinalColor = applyVirus(t2, n2FinalColor, colors[2]);
+
+    if (n3FinalColor === result) {
+      op1 = t1;
+      op2 = t2;
+      found = true;
+      break;
+    }
+  }
+
+  // Fallback (Rare)
+  if (!found) {
+    op1 = getRandomItem(matchOps);
+    op2 = getRandomItem(matchOps);
+  }
+
+  const isReverse = Math.random() > 0.5;
+
+  return {
+    stim: {
+      type: 'FLUX_CAUSAL',
+      dictionary: dict,
+      dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+      visuals: {
+        nodes,
+        nodeColors: colors,
+        ops: [op1, op2],
+        isReverse
+      },
+      textQuery: `FINAL COLOR OF ${nodes[2]}?`, // Explicitly asks for the state of the end node
+      logicProof: `N1(${colors[0]})->N2(${colors[1]})->N3(${colors[2]}) = ${result}`
+    },
+    result
+  };
 };
 
 // 6. FLUX SPATIAL
 const generateFluxSpatial = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const codeFwd = generateCode([]); const codeR = generateCode([codeFwd]); const codeL = generateCode([codeFwd, codeR]); const codeU = generateCode([codeFwd, codeR, codeL]);
-    const dict = shuffleEntries({ [codeFwd]: 'FORWARD', [codeR]: 'TURN_RIGHT', [codeL]: 'TURN_LEFT', [codeU]: 'U_TURN' });
-    let validSequence: string[] = []; let attempts = 0;
-    while (validSequence.length === 0 && attempts < 50) {
-        attempts++; const ops = [codeFwd, codeR, codeL, codeU]; const seq = [getRandomItem(ops), getRandomItem(ops), getRandomItem(ops)];
-        let rotation = 0; 
-        for (const move of seq) { if (move === codeR) rotation = (rotation + 1) % 4; else if (move === codeL) rotation = (rotation + 3) % 4; else if (move === codeU) rotation = (rotation + 2) % 4; }
-        let outcome = ''; if (rotation === 0) outcome = 'NO_CHANGE'; else if (rotation === 1) outcome = '90_RIGHT'; else if (rotation === 2) outcome = '180_FLIP'; else if (rotation === 3) outcome = '90_LEFT';
-        if (outcome === result) validSequence = seq;
-    }
-    if (validSequence.length === 0) { if (result === 'NO_CHANGE') validSequence = [codeR, codeL, codeFwd]; if (result === '90_RIGHT') validSequence = [codeFwd, codeR, codeFwd]; if (result === '90_LEFT') validSequence = [codeFwd, codeL, codeFwd]; if (result === '180_FLIP') validSequence = [codeR, codeR, codeFwd]; }
-    return { stim: { type: 'FLUX_SPATIAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { sequence: validSequence }, textQuery: 'NET HEADING CHANGE', logicProof: `Start(North) + [${validSequence.length} Steps] = ${result}` }, result };
+  const relations = ['NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP']; let result = getRandomItem(relations);
+  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  const codeFwd = generateCode([]); const codeR = generateCode([codeFwd]); const codeL = generateCode([codeFwd, codeR]); const codeU = generateCode([codeFwd, codeR, codeL]);
+  const dict = shuffleEntries({ [codeFwd]: 'FORWARD', [codeR]: 'TURN_RIGHT', [codeL]: 'TURN_LEFT', [codeU]: 'U_TURN' });
+  let validSequence: string[] = []; let attempts = 0;
+  while (validSequence.length === 0 && attempts < 50) {
+    attempts++; const ops = [codeFwd, codeR, codeL, codeU]; const seq = [getRandomItem(ops), getRandomItem(ops), getRandomItem(ops)];
+    let rotation = 0;
+    for (const move of seq) { if (move === codeR) rotation = (rotation + 1) % 4; else if (move === codeL) rotation = (rotation + 3) % 4; else if (move === codeU) rotation = (rotation + 2) % 4; }
+    let outcome = ''; if (rotation === 0) outcome = 'NO_CHANGE'; else if (rotation === 1) outcome = '90_RIGHT'; else if (rotation === 2) outcome = '180_FLIP'; else if (rotation === 3) outcome = '90_LEFT';
+    if (outcome === result) validSequence = seq;
+  }
+  if (validSequence.length === 0) { if (result === 'NO_CHANGE') validSequence = [codeR, codeL, codeFwd]; if (result === '90_RIGHT') validSequence = [codeFwd, codeR, codeFwd]; if (result === '90_LEFT') validSequence = [codeFwd, codeL, codeFwd]; if (result === '180_FLIP') validSequence = [codeR, codeR, codeFwd]; }
+  return { stim: { type: 'FLUX_SPATIAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { sequence: validSequence }, textQuery: 'NET HEADING CHANGE', logicProof: `Start(North) + [${validSequence.length} Steps] = ${result}` }, result };
 };
 
 // 7. FLUX DEICTIC
@@ -331,46 +337,46 @@ const generateFluxDeictic = (prevResult: string | null, forceMatch: boolean): { 
 
 // 8. FLUX CONDITIONAL
 const generateFluxConditional = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['RED', 'BLUE']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const wordText = Math.random() > 0.5 ? 'RED' : 'BLUE'; const inkColor = Math.random() > 0.5 ? 'RED' : 'BLUE'; 
-    const shape = Math.random() > 0.5 ? 'CIRCLE' : 'SQUARE';
-    const codeKeep = generateCode([]); const codeInvert = generateCode([codeKeep]);
-    const mapCircle = Math.random() > 0.5 ? 'READ_TEXT' : 'READ_INK'; const mapSquare = mapCircle === 'READ_TEXT' ? 'READ_INK' : 'READ_TEXT';
-    const dict = shuffleEntries({ [codeKeep]: 'KEEP_VALUE', [codeInvert]: 'INVERT_VALUE', ['(CIRCLE)']: mapCircle, ['(SQUARE)']: mapSquare });
-    const rule = shape === 'CIRCLE' ? mapCircle : mapSquare; const baseValue = rule === 'READ_TEXT' ? wordText : inkColor;
-    let chosenCode = baseValue === result ? codeKeep : codeInvert;
-    return { stim: { type: 'FLUX_CONDITIONAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { wordText, inkColor, shape, modifier: chosenCode }, textQuery: 'DETERMINE FINAL COLOR', logicProof: `(${shape}=${rule} -> ${baseValue}) + ${chosenCode} = ${result}` }, result };
+  const relations = ['RED', 'BLUE']; let result = getRandomItem(relations);
+  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  const wordText = Math.random() > 0.5 ? 'RED' : 'BLUE'; const inkColor = Math.random() > 0.5 ? 'RED' : 'BLUE';
+  const shape = Math.random() > 0.5 ? 'CIRCLE' : 'SQUARE';
+  const codeKeep = generateCode([]); const codeInvert = generateCode([codeKeep]);
+  const mapCircle = Math.random() > 0.5 ? 'READ_TEXT' : 'READ_INK'; const mapSquare = mapCircle === 'READ_TEXT' ? 'READ_INK' : 'READ_TEXT';
+  const dict = shuffleEntries({ [codeKeep]: 'KEEP_VALUE', [codeInvert]: 'INVERT_VALUE', ['(CIRCLE)']: mapCircle, ['(SQUARE)']: mapSquare });
+  const rule = shape === 'CIRCLE' ? mapCircle : mapSquare; const baseValue = rule === 'READ_TEXT' ? wordText : inkColor;
+  let chosenCode = baseValue === result ? codeKeep : codeInvert;
+  return { stim: { type: 'FLUX_CONDITIONAL', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { wordText, inkColor, shape, modifier: chosenCode }, textQuery: 'DETERMINE FINAL COLOR', logicProof: `(${shape}=${rule} -> ${baseValue}) + ${chosenCode} = ${result}` }, result };
 };
 
 // 9. FLUX ANALOGY
 const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean): { stim: StimulusData, result: string } => {
-    const relations = ['ANALOGOUS', 'NON_ANALOGOUS']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
-    const dict = shuffleEntries({ [c1]: 'CAUSES', [c2]: 'CAUSES', [c3]: 'PREVENTS', [c4]: 'PREVENTS' });
-    const rel1 = Math.random() > 0.5 ? 'CAUSES' : 'PREVENTS'; let rel2 = result === 'ANALOGOUS' ? rel1 : (rel1 === 'CAUSES' ? 'PREVENTS' : 'CAUSES');
-    const sym1 = rel1 === 'CAUSES' ? (Math.random()>0.5?c1:c2) : (Math.random()>0.5?c3:c4);
-    const sym2 = rel2 === 'CAUSES' ? (Math.random()>0.5?c1:c2) : (Math.random()>0.5?c3:c4);
-    return { stim: { type: 'FLUX_ANALOGY', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { net1: { left: 'A', op: sym1, right: 'B' }, net2: { left: 'X', op: sym2, right: 'Y' } }, textQuery: 'RELATION MATCH?', logicProof: `${rel1} vs ${rel2} = ${result}` }, result }
+  const relations = ['ANALOGOUS', 'NON_ANALOGOUS']; let result = getRandomItem(relations);
+  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+  const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
+  const dict = shuffleEntries({ [c1]: 'CAUSES', [c2]: 'CAUSES', [c3]: 'PREVENTS', [c4]: 'PREVENTS' });
+  const rel1 = Math.random() > 0.5 ? 'CAUSES' : 'PREVENTS'; let rel2 = result === 'ANALOGOUS' ? rel1 : (rel1 === 'CAUSES' ? 'PREVENTS' : 'CAUSES');
+  const sym1 = rel1 === 'CAUSES' ? (Math.random() > 0.5 ? c1 : c2) : (Math.random() > 0.5 ? c3 : c4);
+  const sym2 = rel2 === 'CAUSES' ? (Math.random() > 0.5 ? c1 : c2) : (Math.random() > 0.5 ? c3 : c4);
+  return { stim: { type: 'FLUX_ANALOGY', dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { net1: { left: 'A', op: sym1, right: 'B' }, net2: { left: 'X', op: sym2, right: 'Y' } }, textQuery: 'RELATION MATCH?', logicProof: `${rel1} vs ${rel2} = ${result}` }, result }
 };
 
 // --- Helpers ---
 
 const getComplexityCost = (stim: StimulusData): number => {
-  if (stim.isNegated) return 4; 
+  if (stim.isNegated) return 4;
   switch (stim.type) {
     case 'FLUX_FEATURE': return 1;    // Simple Matching
     case 'FLUX_COMPARISON': return 2; // Context + 2 Variables
     case 'FLUX_OPPOSITION': return 2; // Linear Math
     case 'FLUX_HIERARCHY': return 3;  // Tree Traversal
     case 'FLUX_SPATIAL': return 3;    // Vector Sum
-    
+
     // Bumped Causal to 4 because Chromatic Gating requires 
     // two distinct conditional checks (Link 1 & Link 2).
-    case 'FLUX_CAUSAL': return 4;     
-    
-    case 'FLUX_DEICTIC': return stim.visuals.timeFrame === 'THEN' ? 6 : 4; 
+    case 'FLUX_CAUSAL': return 4;
+
+    case 'FLUX_DEICTIC': return stim.visuals.timeFrame === 'THEN' ? 6 : 4;
     case 'FLUX_CONDITIONAL': return 5; // Stroop Interference
     case 'FLUX_ANALOGY': return 5;     // Meta-Matching
     default: return 1;
@@ -383,9 +389,9 @@ const BlurredLogicBox = ({ label, result, proof, isCurrent, revealOverride }: { 
   const isVisible = revealOverride || revealed;
   return (
     <button onClick={() => setRevealed(true)} className={`mt-auto w-full text-center relative group transition-all duration-200 text-left ${isCurrent ? 'p-3 bg-black rounded-xl border border-slate-700 shadow-lg' : 'p-2 bg-slate-950 rounded-xl border border-slate-800'}`}>
-       <div className="text-[10px] text-slate-600 uppercase font-bold tracking-wider mb-1 flex justify-between items-center px-1"><span>{label}</span>{!isVisible && <EyeOff className="w-3 h-3 opacity-50" />}{isVisible && <Eye className="w-3 h-3 opacity-50 text-emerald-500" />}</div>
-       <div className={`transition-all duration-300 ${isVisible ? 'blur-none' : 'blur-md select-none opacity-50'}`}><div className={`font-black ${isCurrent ? 'text-2xl text-white' : 'text-lg text-slate-300'}`}>{result}</div><div className={`text-[10px] mt-1 font-mono p-1 rounded border ${isCurrent ? 'text-purple-400 bg-slate-900 border-slate-800' : 'text-slate-600 bg-black/50 border-transparent'}`}>{proof}</div></div>
-       {!isVisible && (<div className="absolute inset-0 flex items-center justify-center z-10"><div className="bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-full text-[10px] font-bold text-slate-400 uppercase shadow-xl group-hover:text-white group-hover:border-slate-500 transition-colors">Click to Reveal</div></div>)}
+      <div className="text-[10px] text-slate-600 uppercase font-bold tracking-wider mb-1 flex justify-between items-center px-1"><span>{label}</span>{!isVisible && <EyeOff className="w-3 h-3 opacity-50" />}{isVisible && <Eye className="w-3 h-3 opacity-50 text-emerald-500" />}</div>
+      <div className={`transition-all duration-300 ${isVisible ? 'blur-none' : 'blur-md select-none opacity-50'}`}><div className={`font-black ${isCurrent ? 'text-2xl text-white' : 'text-lg text-slate-300'}`}>{result}</div><div className={`text-[10px] mt-1 font-mono p-1 rounded border ${isCurrent ? 'text-purple-400 bg-slate-900 border-slate-800' : 'text-slate-600 bg-black/50 border-transparent'}`}>{proof}</div></div>
+      {!isVisible && (<div className="absolute inset-0 flex items-center justify-center z-10"><div className="bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-full text-[10px] font-bold text-slate-400 uppercase shadow-xl group-hover:text-white group-hover:border-slate-500 transition-colors">Click to Reveal</div></div>)}
     </button>
   );
 };
@@ -393,93 +399,131 @@ const BlurredLogicBox = ({ label, result, proof, isCurrent, revealOverride }: { 
 // --- VISUAL RENDERER ---
 const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> = ({ stim, isRepairMode }) => {
   const [revealHint, setRevealHint] = useState(false);
-  
+
   // Removed isMasked / setTimeout logic
   useEffect(() => { setRevealHint(false); }, [stim]);
-  
+
   const showHint = revealHint || (isRepairMode && stim.type === 'FLUX_DEICTIC');
 
   const renderContent = () => {
-      // 1. FEATURE
-      if (stim.type === 'FLUX_FEATURE') {
-        const { start, end } = stim.visuals;
-        const ShapeIcon = ({s}: {s:any}) => {
-           const colorMap: any = { RED: 'text-red-500', BLUE: 'text-blue-500', GREEN: 'text-emerald-500', YELLOW: 'text-yellow-400' };
-           const c = colorMap[s.color];
-           const sz = "w-24 h-24 md:w-32 md:h-32 transition-all filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]";
-           let icon = <div className={`${c} ${sz} bg-current rounded-none opacity-90`} />;
-           if (s.shape === 'CIRCLE') icon = <div className={`${c} ${sz} bg-current rounded-full opacity-90`} />;
-           else if (s.shape === 'TRIANGLE') icon = <div className={`${c} ${sz} w-0 h-0 border-l-[48px] border-r-[48px] border-b-[96px] md:border-l-[64px] md:border-r-[64px] md:border-b-[128px] border-l-transparent border-r-transparent border-b-current opacity-90`} />;
-           else if (s.shape === 'DIAMOND') icon = <div className={`${c} ${sz} rotate-45 bg-current rounded-sm opacity-90`} />;
-           return (<div className="flex flex-col items-center gap-2">{icon}<div className="flex gap-2 text-[10px] md:text-xs font-mono text-slate-500 uppercase tracking-widest bg-black/40 px-2 py-1 rounded"><span>{s.color}</span><span className="text-slate-700">|</span><span>{s.shape}</span></div></div>);
-        };
-        return (<div className="flex items-center gap-8 md:gap-16"><div className="p-4 md:p-8 bg-slate-800/50 rounded-[2rem] border border-slate-700 backdrop-blur-sm"><ShapeIcon s={start} /></div><div className="flex flex-col items-center gap-1"><div className="h-px w-12 bg-slate-600"></div><Scan className="w-6 h-6 text-slate-500" /><div className="h-px w-12 bg-slate-600"></div></div><div className="p-4 md:p-8 bg-slate-800/50 rounded-[2rem] border border-slate-700 backdrop-blur-sm"><ShapeIcon s={end} /></div></div>);
-      }
-      // 2. COMPARISON
-      if (stim.type === 'FLUX_COMPARISON') {
-        const { hub, leftLeaf, rightLeaf, icon } = stim.visuals;
-        const { contextColors } = stim;
-        return (<div className="flex flex-col gap-4 w-full items-center justify-center"><div className="relative flex items-center gap-2 md:gap-4 bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden px-6 py-6 md:px-12 md:py-8 w-full max-w-lg">{contextColors && (<div className="absolute inset-0 flex z-0"><div className={`w-1/2 h-full bg-gradient-to-r ${contextColors[0]}`}></div><div className={`w-1/2 h-full bg-gradient-to-l ${contextColors[1]}`}></div></div>)}<div className="relative z-10 flex flex-col items-center gap-2 flex-1"><div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{leftLeaf}</div></div><div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">{icon}</div><div className="relative z-10 w-16 h-16 md:w-24 md:h-24 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center text-3xl md:text-5xl font-black text-black shadow-2xl mx-2">{hub}</div><div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">{icon}</div><div className="relative z-10 flex flex-col items-center gap-2 flex-1"><div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{rightLeaf}</div></div></div></div>);
-      }
-      // 3. OPPOSITION
-      if (stim.type === 'FLUX_OPPOSITION') {
-        const { chain } = stim.visuals;
-        return (<div className="flex flex-col gap-4 w-full items-center scale-75 md:scale-100"><div className="flex items-center gap-0"><div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center font-bold text-white z-10 text-xl">{chain[0].l}</div><div className="w-24 h-8 md:w-32 md:h-10 bg-slate-800 border-y-2 border-slate-700 flex items-center justify-center -mx-2"><span className="text-purple-400 font-bold text-2xl">{chain[0].icon}</span></div><div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center font-bold text-slate-500 z-10 text-xl">{chain[0].r}</div><div className="w-24 h-8 md:w-32 md:h-10 bg-slate-800 border-y-2 border-slate-700 flex items-center justify-center -mx-2"><span className="text-purple-400 font-bold text-2xl">{chain[1].icon}</span></div><div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center font-bold text-white z-10 text-xl">{chain[1].r}</div></div></div>);
-      }
-      // 4. HIERARCHY
-      if (stim.type === 'FLUX_HIERARCHY') {
-          const { nodes, linkAB, linkBC } = stim.visuals;
-          return (<div className="relative flex items-end justify-center h-48 w-64 md:w-80 gap-8 md:gap-16"><div className="z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-800 rounded-full border-2 border-slate-600 flex items-center justify-center text-xl md:text-2xl font-black text-white shadow-lg">{nodes[0]}</div><div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-900 rounded-full border-2 border-purple-500/50 flex items-center justify-center text-xl md:text-2xl font-black text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]">{nodes[1]}</div><div className="z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-800 rounded-full border-2 border-slate-600 flex items-center justify-center text-xl md:text-2xl font-black text-white shadow-lg">{nodes[2]}</div><svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"><line x1="20%" y1="80%" x2="50%" y2="20%" stroke="#475569" strokeWidth="2" /><line x1="80%" y1="80%" x2="50%" y2="20%" stroke="#475569" strokeWidth="2" /></svg><div className="absolute top-[40%] left-[30%] -translate-x-1/2 -translate-y-1/2 bg-black border border-slate-700 rounded px-1.5 py-0.5 z-20"><span className="text-emerald-400 text-lg md:text-xl font-bold">{linkAB}</span></div><div className="absolute top-[40%] right-[30%] translate-x-1/2 -translate-y-1/2 bg-black border border-slate-700 rounded px-1.5 py-0.5 z-20"><span className="text-emerald-400 text-lg md:text-xl font-bold">{linkBC}</span></div></div>)
-      }
-      // 5. CAUSAL
-      if (stim.type === 'FLUX_CAUSAL') {
-          const { nodes, ops, isReverse } = stim.visuals;
-          const renderNodes = isReverse ? [...nodes].reverse() : nodes;
-          const renderOps = isReverse ? [...ops].reverse() : ops;
-          const arrowRotation = isReverse ? 'rotate-180' : '';
-          const getNodeStyle = (color: string) => color === 'RED' ? 'border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'border-blue-500 text-blue-100 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
-          return (<div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100"><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[isReverse?2:0])}`}>{renderNodes[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[1])}`}>{renderNodes[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl">{renderOps[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[isReverse?0:2])}`}>{renderNodes[2]}</div></div>)
-      }
-      // 6. SPATIAL
-      if (stim.type === 'FLUX_SPATIAL') {
-          const { sequence } = stim.visuals;
-          return (<div className="flex flex-col items-center gap-6"><div className="flex items-center gap-3"><Compass className="w-8 h-8 text-emerald-400 animate-pulse" /><div className="text-slate-500 font-mono text-sm uppercase">Origin: (0,0)</div></div><div className="flex gap-4">{sequence.map((code: string, i: number) => (<div key={i} className="flex flex-col items-center gap-2"><div className="text-xs text-slate-600 font-bold">Step {i+1}</div><div className="w-16 h-16 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center text-purple-400 font-black text-xl shadow-lg">{code}</div></div>))}</div><div className="text-xs text-slate-500 font-mono">Calculate Final Vector</div></div>)
-      }
-      // 7. DEICTIC
-      if (stim.type === 'FLUX_DEICTIC') {
-        const cells = Array(9).fill(null);
-        const { activeFace, activeCode, activePos, targetPos, timeFrame, effectiveFaceIdx } = stim.visuals;
-        const rot = { 'NORTH': 'rotate-0', 'EAST': 'rotate-90', 'SOUTH': 'rotate-180', 'WEST': '-rotate-90' }[activeFace as string];
-        const dirNames = ['N', 'E', 'S', 'W']; const currentViewDir = dirNames[effectiveFaceIdx];
-        return (<div className="flex flex-col items-center gap-4"><div className="relative"><div className="grid grid-cols-3 gap-1 md:gap-3 p-2 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner">{cells.map((_, i) => (<div key={i} className="w-8 h-8 md:w-20 md:h-20 bg-slate-900 rounded-lg md:rounded-xl flex items-center justify-center relative transition-all">{i === targetPos && <div className="w-2 h-2 md:w-6 md:h-6 bg-yellow-400 rounded-full animate-pulse shadow-lg shadow-yellow-500/50" />}{i === activePos && (<div className={`transform transition-all ${rot}`}><div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[16px] md:border-l-[16px] md:border-r-[16px] md:border-b-[32px] border-l-transparent border-r-transparent border-b-emerald-500 filter drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><div className="absolute -top-4 md:-top-8 left-1/2 -translate-x-1/2 text-[8px] md:text-xs font-bold text-purple-300 bg-black/80 px-1 rounded">{activeCode}</div></div>)}</div>))}</div><button onClick={() => setRevealHint(true)} className="absolute -right-16 top-1/2 -translate-y-1/2 bg-slate-900 border border-slate-600 p-2 rounded flex flex-col items-center cursor-pointer hover:border-slate-400 transition-colors group" title="Click to Reveal Answer"><div className="text-[10px] text-slate-500 uppercase group-hover:text-slate-300 transition-colors">View</div><div className={`text-xl font-black text-white transition-all duration-300 ${showHint ? 'blur-none' : 'blur-md select-none'}`}>{currentViewDir}</div>{!showHint && <HelpCircle className="w-3 h-3 text-slate-600 mt-1 absolute bottom-1" />}</button></div><div className="flex items-center gap-4 text-xs font-mono bg-slate-900/50 p-2 rounded"><div className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400"/><span className={timeFrame === 'THEN' ? 'text-red-400' : 'text-emerald-400'}>{timeFrame}</span></div><span className="text-slate-600">|</span><div className="text-slate-400">Target is to my...?</div></div></div>);
-      }
-      // 8. CONDITIONAL
-      if (stim.type === 'FLUX_CONDITIONAL') {
-          const { wordText, inkColor, shape, modifier } = stim.visuals;
-          const textColorClass = inkColor === 'RED' ? 'text-red-500' : 'text-blue-500'; const borderColorClass = 'border-slate-500';
-          return (<div className="flex flex-col items-center gap-6"><div className="flex items-center gap-4"><div className={`relative flex items-center justify-center w-24 h-24 border-4 bg-slate-900 ${borderColorClass} ${shape === 'CIRCLE' ? 'rounded-full' : 'rounded-xl'}`}><span className={`font-black text-2xl ${textColorClass}`}>{wordText}</span><div className="absolute -bottom-6 text-[10px] text-slate-500 uppercase font-bold tracking-widest">{shape}</div></div><ArrowRight className="w-8 h-8 text-slate-500" /><div className="flex flex-col items-center gap-2"><div className="text-xs text-slate-500 font-bold uppercase">Apply</div><div className="w-20 h-20 bg-slate-900 border border-slate-600 rounded-xl flex items-center justify-center text-yellow-400 font-black text-xl shadow-lg">{modifier}</div></div><ArrowRight className="w-8 h-8 text-slate-500" /><div className="w-20 h-20 rounded-full border-4 border-slate-800 bg-slate-950 flex items-center justify-center text-slate-600 font-bold text-4xl">?</div></div></div>)
-      }
-      // 9. ANALOGY
-      if (stim.type === 'FLUX_ANALOGY') {
-          const { net1, net2 } = stim.visuals;
-          const NetBlock = ({n}: {n:any}) => (<div className="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700"><span className="font-bold text-white">{n.left}</span><ArrowRight className="w-3 h-3 text-slate-500"/><span className="text-yellow-400 font-bold text-xl">{n.op}</span><ArrowRight className="w-3 h-3 text-slate-500"/><span className="font-bold text-white">{n.right}</span></div>);
-          return (<div className="flex flex-col items-center gap-4"><NetBlock n={net1} /><div className="flex items-center gap-2 text-slate-500 text-xs uppercase tracking-widest"><Split className="w-4 h-4" /> Compare To</div><NetBlock n={net2} /></div>)
-      }
-      return null;
+    // 1. FEATURE
+    if (stim.type === 'FLUX_FEATURE') {
+      const { start, end } = stim.visuals;
+      const ShapeIcon = ({ s }: { s: any }) => {
+        const colorMap: any = { RED: 'text-red-500', BLUE: 'text-blue-500', GREEN: 'text-emerald-500', YELLOW: 'text-yellow-400' };
+        const c = colorMap[s.color];
+        const sz = "w-24 h-24 md:w-32 md:h-32 transition-all filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]";
+        let icon = <div className={`${c} ${sz} bg-current rounded-none opacity-90`} />;
+        if (s.shape === 'CIRCLE') icon = <div className={`${c} ${sz} bg-current rounded-full opacity-90`} />;
+        else if (s.shape === 'TRIANGLE') icon = <div className={`${c} ${sz} w-0 h-0 border-l-[48px] border-r-[48px] border-b-[96px] md:border-l-[64px] md:border-r-[64px] md:border-b-[128px] border-l-transparent border-r-transparent border-b-current opacity-90`} />;
+        else if (s.shape === 'DIAMOND') icon = <div className={`${c} ${sz} rotate-45 bg-current rounded-sm opacity-90`} />;
+        return (<div className="flex flex-col items-center gap-2">{icon}<div className="flex gap-2 text-[10px] md:text-xs font-mono text-slate-500 uppercase tracking-widest bg-black/40 px-2 py-1 rounded"><span>{s.color}</span><span className="text-slate-700">|</span><span>{s.shape}</span></div></div>);
+      };
+      return (<div className="flex items-center gap-8 md:gap-16"><div className="p-4 md:p-8 bg-slate-800/50 rounded-[2rem] border border-slate-700 backdrop-blur-sm"><ShapeIcon s={start} /></div><div className="flex flex-col items-center gap-1"><div className="h-px w-12 bg-slate-600"></div><Scan className="w-6 h-6 text-slate-500" /><div className="h-px w-12 bg-slate-600"></div></div><div className="p-4 md:p-8 bg-slate-800/50 rounded-[2rem] border border-slate-700 backdrop-blur-sm"><ShapeIcon s={end} /></div></div>);
+    }
+    // 2. COMPARISON
+    if (stim.type === 'FLUX_COMPARISON') {
+      const { hub, leftLeaf, rightLeaf, icon } = stim.visuals;
+      const { contextColors } = stim;
+      return (<div className="flex flex-col gap-4 w-full items-center justify-center"><div className="relative flex items-center gap-2 md:gap-4 bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden px-6 py-6 md:px-12 md:py-8 w-full max-w-lg">{contextColors && (<div className="absolute inset-0 flex z-0"><div className={`w-1/2 h-full bg-gradient-to-r ${contextColors[0]}`}></div><div className={`w-1/2 h-full bg-gradient-to-l ${contextColors[1]}`}></div></div>)}<div className="relative z-10 flex flex-col items-center gap-2 flex-1"><div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{leftLeaf}</div></div><div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">{icon}</div><div className="relative z-10 w-16 h-16 md:w-24 md:h-24 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center text-3xl md:text-5xl font-black text-black shadow-2xl mx-2">{hub}</div><div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">{icon}</div><div className="relative z-10 flex flex-col items-center gap-2 flex-1"><div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{rightLeaf}</div></div></div></div>);
+    }
+    // 3. OPPOSITION
+    if (stim.type === 'FLUX_OPPOSITION') {
+      const { chain } = stim.visuals;
+      return (<div className="flex flex-col gap-4 w-full items-center scale-75 md:scale-100"><div className="flex items-center gap-0"><div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center font-bold text-white z-10 text-xl">{chain[0].l}</div><div className="w-24 h-8 md:w-32 md:h-10 bg-slate-800 border-y-2 border-slate-700 flex items-center justify-center -mx-2"><span className="text-purple-400 font-bold text-2xl">{chain[0].icon}</span></div><div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center font-bold text-slate-500 z-10 text-xl">{chain[0].r}</div><div className="w-24 h-8 md:w-32 md:h-10 bg-slate-800 border-y-2 border-slate-700 flex items-center justify-center -mx-2"><span className="text-purple-400 font-bold text-2xl">{chain[1].icon}</span></div><div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center font-bold text-white z-10 text-xl">{chain[1].r}</div></div></div>);
+    }
+    // 4. HIERARCHY
+    if (stim.type === 'FLUX_HIERARCHY') {
+      const { nodes, linkAB, linkBC } = stim.visuals;
+      return (<div className="relative flex items-end justify-center h-48 w-64 md:w-80 gap-8 md:gap-16"><div className="z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-800 rounded-full border-2 border-slate-600 flex items-center justify-center text-xl md:text-2xl font-black text-white shadow-lg">{nodes[0]}</div><div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-900 rounded-full border-2 border-purple-500/50 flex items-center justify-center text-xl md:text-2xl font-black text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]">{nodes[1]}</div><div className="z-10 w-14 h-14 md:w-16 md:h-16 bg-slate-800 rounded-full border-2 border-slate-600 flex items-center justify-center text-xl md:text-2xl font-black text-white shadow-lg">{nodes[2]}</div><svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"><line x1="20%" y1="80%" x2="50%" y2="20%" stroke="#475569" strokeWidth="2" /><line x1="80%" y1="80%" x2="50%" y2="20%" stroke="#475569" strokeWidth="2" /></svg><div className="absolute top-[40%] left-[30%] -translate-x-1/2 -translate-y-1/2 bg-black border border-slate-700 rounded px-1.5 py-0.5 z-20"><span className="text-emerald-400 text-lg md:text-xl font-bold">{linkAB}</span></div><div className="absolute top-[40%] right-[30%] translate-x-1/2 -translate-y-1/2 bg-black border border-slate-700 rounded px-1.5 py-0.5 z-20"><span className="text-emerald-400 text-lg md:text-xl font-bold">{linkBC}</span></div></div>)
+    }
+    // 5. CAUSAL (Viral Mutation)
+    if (stim.type === 'FLUX_CAUSAL') {
+      const { nodes, nodeColors, ops, isReverse } = stim.visuals;
+
+      const renderNodes = isReverse ? [...nodes].reverse() : nodes;
+      const renderColors = isReverse ? [...nodeColors].reverse() : nodeColors;
+      const renderOps = isReverse ? [...ops].reverse() : ops;
+      const arrowRotation = isReverse ? 'rotate-180' : '';
+
+      const getNodeStyle = (color: string) =>
+        color === 'RED'
+          ? 'border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+          : 'border-blue-500 text-blue-100 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+
+      return (
+        <div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100">
+          {/* Node 1 */}
+          <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[0])}`}>
+            {renderNodes[0]}
+          </div>
+
+          {/* Link 1 */}
+          <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`} />
+          <div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+            {renderOps[0]}
+          </div>
+          <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`} />
+
+          {/* Node 2 */}
+          <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[1])}`}>
+            {renderNodes[1]}
+          </div>
+
+          {/* Link 2 */}
+          <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`} />
+          <div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+            {renderOps[1]}
+          </div>
+          <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`} />
+
+          {/* Node 3 */}
+          <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[2])}`}>
+            {renderNodes[2]}
+          </div>
+        </div>
+      )
+    }
+    // 6. SPATIAL
+    if (stim.type === 'FLUX_SPATIAL') {
+      const { sequence } = stim.visuals;
+      return (<div className="flex flex-col items-center gap-6"><div className="flex items-center gap-3"><Compass className="w-8 h-8 text-emerald-400 animate-pulse" /><div className="text-slate-500 font-mono text-sm uppercase">Origin: (0,0)</div></div><div className="flex gap-4">{sequence.map((code: string, i: number) => (<div key={i} className="flex flex-col items-center gap-2"><div className="text-xs text-slate-600 font-bold">Step {i + 1}</div><div className="w-16 h-16 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center text-purple-400 font-black text-xl shadow-lg">{code}</div></div>))}</div><div className="text-xs text-slate-500 font-mono">Calculate Final Vector</div></div>)
+    }
+    // 7. DEICTIC
+    if (stim.type === 'FLUX_DEICTIC') {
+      const cells = Array(9).fill(null);
+      const { activeFace, activeCode, activePos, targetPos, timeFrame, effectiveFaceIdx } = stim.visuals;
+      const rot = { 'NORTH': 'rotate-0', 'EAST': 'rotate-90', 'SOUTH': 'rotate-180', 'WEST': '-rotate-90' }[activeFace as string];
+      const dirNames = ['N', 'E', 'S', 'W']; const currentViewDir = dirNames[effectiveFaceIdx];
+      return (<div className="flex flex-col items-center gap-4"><div className="relative"><div className="grid grid-cols-3 gap-1 md:gap-3 p-2 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner">{cells.map((_, i) => (<div key={i} className="w-8 h-8 md:w-20 md:h-20 bg-slate-900 rounded-lg md:rounded-xl flex items-center justify-center relative transition-all">{i === targetPos && <div className="w-2 h-2 md:w-6 md:h-6 bg-yellow-400 rounded-full animate-pulse shadow-lg shadow-yellow-500/50" />}{i === activePos && (<div className={`transform transition-all ${rot}`}><div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[16px] md:border-l-[16px] md:border-r-[16px] md:border-b-[32px] border-l-transparent border-r-transparent border-b-emerald-500 filter drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><div className="absolute -top-4 md:-top-8 left-1/2 -translate-x-1/2 text-[8px] md:text-xs font-bold text-purple-300 bg-black/80 px-1 rounded">{activeCode}</div></div>)}</div>))}</div><button onClick={() => setRevealHint(true)} className="absolute -right-16 top-1/2 -translate-y-1/2 bg-slate-900 border border-slate-600 p-2 rounded flex flex-col items-center cursor-pointer hover:border-slate-400 transition-colors group" title="Click to Reveal Answer"><div className="text-[10px] text-slate-500 uppercase group-hover:text-slate-300 transition-colors">View</div><div className={`text-xl font-black text-white transition-all duration-300 ${showHint ? 'blur-none' : 'blur-md select-none'}`}>{currentViewDir}</div>{!showHint && <HelpCircle className="w-3 h-3 text-slate-600 mt-1 absolute bottom-1" />}</button></div><div className="flex items-center gap-4 text-xs font-mono bg-slate-900/50 p-2 rounded"><div className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /><span className={timeFrame === 'THEN' ? 'text-red-400' : 'text-emerald-400'}>{timeFrame}</span></div><span className="text-slate-600">|</span><div className="text-slate-400">Target is to my...?</div></div></div>);
+    }
+    // 8. CONDITIONAL
+    if (stim.type === 'FLUX_CONDITIONAL') {
+      const { wordText, inkColor, shape, modifier } = stim.visuals;
+      const textColorClass = inkColor === 'RED' ? 'text-red-500' : 'text-blue-500'; const borderColorClass = 'border-slate-500';
+      return (<div className="flex flex-col items-center gap-6"><div className="flex items-center gap-4"><div className={`relative flex items-center justify-center w-24 h-24 border-4 bg-slate-900 ${borderColorClass} ${shape === 'CIRCLE' ? 'rounded-full' : 'rounded-xl'}`}><span className={`font-black text-2xl ${textColorClass}`}>{wordText}</span><div className="absolute -bottom-6 text-[10px] text-slate-500 uppercase font-bold tracking-widest">{shape}</div></div><ArrowRight className="w-8 h-8 text-slate-500" /><div className="flex flex-col items-center gap-2"><div className="text-xs text-slate-500 font-bold uppercase">Apply</div><div className="w-20 h-20 bg-slate-900 border border-slate-600 rounded-xl flex items-center justify-center text-yellow-400 font-black text-xl shadow-lg">{modifier}</div></div><ArrowRight className="w-8 h-8 text-slate-500" /><div className="w-20 h-20 rounded-full border-4 border-slate-800 bg-slate-950 flex items-center justify-center text-slate-600 font-bold text-4xl">?</div></div></div>)
+    }
+    // 9. ANALOGY
+    if (stim.type === 'FLUX_ANALOGY') {
+      const { net1, net2 } = stim.visuals;
+      const NetBlock = ({ n }: { n: any }) => (<div className="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700"><span className="font-bold text-white">{n.left}</span><ArrowRight className="w-3 h-3 text-slate-500" /><span className="text-yellow-400 font-bold text-xl">{n.op}</span><ArrowRight className="w-3 h-3 text-slate-500" /><span className="font-bold text-white">{n.right}</span></div>);
+      return (<div className="flex flex-col items-center gap-4"><NetBlock n={net1} /><div className="flex items-center gap-2 text-slate-500 text-xs uppercase tracking-widest"><Split className="w-4 h-4" /> Compare To</div><NetBlock n={net2} /></div>)
+    }
+    return null;
   };
 
   return (
-      <div className={`relative p-6 rounded-3xl transition-all duration-500 ${stim.isNegated ? 'border-4 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.3)] bg-red-950/20' : ''}`}>
-          
-          {/* NEGATION BADGE (Clean design, non-intrusive) */}
-          {stim.isNegated && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-1.5 rounded-full font-black tracking-widest text-xs shadow-lg flex items-center gap-2 z-50 border-2 border-red-400">
-                  <Ban className="w-4 h-4" /> LOGIC INVERTED
-              </div>
-          )}
+    <div className={`relative p-6 rounded-3xl transition-all duration-500 ${stim.isNegated ? 'border-4 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.3)] bg-red-950/20' : ''}`}>
 
-          {renderContent()}
-      </div>
+      {/* NEGATION BADGE (Clean design, non-intrusive) */}
+      {stim.isNegated && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-1.5 rounded-full font-black tracking-widest text-xs shadow-lg flex items-center gap-2 z-50 border-2 border-red-400">
+          <Ban className="w-4 h-4" /> LOGIC INVERTED
+        </div>
+      )}
+
+      {renderContent()}
+    </div>
   );
 };
 
@@ -488,27 +532,25 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-slate-900 border border-slate-700 w-full max-w-4xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950"><div><h2 className="text-2xl font-black text-white flex items-center gap-2"><BookOpen className="w-6 h-6 text-purple-400"/> OMEGA FIELD GUIDE</h2><p className="text-xs text-slate-500 font-mono uppercase tracking-widest mt-1">The Hidden Calculations</p></div><button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-colors"><X className="w-6 h-6" /></button></div>
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950"><div><h2 className="text-2xl font-black text-white flex items-center gap-2"><BookOpen className="w-6 h-6 text-purple-400" /> OMEGA FIELD GUIDE</h2><p className="text-xs text-slate-500 font-mono uppercase tracking-widest mt-1">The Hidden Calculations</p></div><button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-colors"><X className="w-6 h-6" /></button></div>
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="col-span-1 md:col-span-2 bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl text-center"><h3 className="text-blue-400 font-bold uppercase tracking-widest text-sm mb-1">The Golden Rule</h3><p className="text-slate-300 text-sm">Never match the pictures. Never match the words.<br/><strong className="text-white">Match the Hidden Result.</strong></p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">1. FEATURE</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Attribute Filter</div><p className="text-slate-400 text-sm leading-relaxed">The Code defines the Rule. The Visuals are the Suspect.<br/><br/><strong>Calculation:</strong> Does the visual obey the code?<br/><span className="text-white font-mono bg-black px-1 rounded">MATCH_COLOR</span> vs <span className="text-white font-mono bg-black px-1 rounded">NONE</span>.</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">2. COMPARISON</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Pivot Scale</div><p className="text-slate-400 text-sm leading-relaxed">Find the Hub. Check the Context (Color) for rules.<br/><br/><strong>Calculation:</strong> If A {'>'} Hub and C {'<'} Hub...<br/><strong>Result:</strong> <span className="text-white font-mono bg-black px-1 rounded">A {'>'} C</span> (GREATER).</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">3. OPPOSITION</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">Polarity Math</div><p className="text-slate-400 text-sm leading-relaxed">Ignore the pictures. Read the semantic meaning.<br/><br/><strong>Calculation:</strong> Opposite (-1) x Opposite (-1) = <span className="text-white font-mono bg-black px-1 rounded">SAME (+1)</span>.</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">4. HIERARCHY</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Elevator</div><p className="text-slate-400 text-sm leading-relaxed">Track movement from Subject to Object.<br/><br/><strong>Calculation:</strong> Parent (+1) + Parent (+1) = <span className="text-white font-mono bg-black px-1 rounded">+2 (HIGHER)</span>.<br/><em className="text-xs opacity-50">Watch out for Query Reversal!</em></p></div>
+          <div className="col-span-1 md:col-span-2 bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl text-center"><h3 className="text-blue-400 font-bold uppercase tracking-widest text-sm mb-1">The Golden Rule</h3><p className="text-slate-300 text-sm">Never match the pictures. Never match the words.<br /><strong className="text-white">Match the Hidden Result.</strong></p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">1. FEATURE</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Attribute Filter</div><p className="text-slate-400 text-sm leading-relaxed">The Code defines the Rule. The Visuals are the Suspect.<br /><br /><strong>Calculation:</strong> Does the visual obey the code?<br /><span className="text-white font-mono bg-black px-1 rounded">MATCH_COLOR</span> vs <span className="text-white font-mono bg-black px-1 rounded">NONE</span>.</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">2. COMPARISON</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Pivot Scale</div><p className="text-slate-400 text-sm leading-relaxed">Find the Hub. Check the Context (Color) for rules.<br /><br /><strong>Calculation:</strong> If A {'>'} Hub and C {'<'} Hub...<br /><strong>Result:</strong> <span className="text-white font-mono bg-black px-1 rounded">A {'>'} C</span> (GREATER).</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">3. OPPOSITION</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">Polarity Math</div><p className="text-slate-400 text-sm leading-relaxed">Ignore the pictures. Read the semantic meaning.<br /><br /><strong>Calculation:</strong> Opposite (-1) x Opposite (-1) = <span className="text-white font-mono bg-black px-1 rounded">SAME (+1)</span>.</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">4. HIERARCHY</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Elevator</div><p className="text-slate-400 text-sm leading-relaxed">Track movement from Subject to Object.<br /><br /><strong>Calculation:</strong> Parent (+1) + Parent (+1) = <span className="text-white font-mono bg-black px-1 rounded">+2 (HIGHER)</span>.<br /><em className="text-xs opacity-50">Watch out for Query Reversal!</em></p></div>
           {/* 5. Causal */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">5. CAUSAL</div>
-            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Chromatic Gating</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Viral Mutation</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Trace the signal flow. Gates are conditional based on <strong>Node Color</strong>.
-              <br/><br/>
-              <strong>Rule:</strong> <span className="text-white font-mono bg-black px-1 rounded">BLOCK_RED</span> stops Red nodes but allows Blue nodes to pass.
-              <br/>
-              <strong>Calculation:</strong> The signal must survive <strong>BOTH</strong> links to Trigger.
-              <br/>
-              <span className="text-white font-mono bg-black px-1 rounded">PASS</span> + <span className="text-white font-mono bg-black px-1 rounded">PASS</span> = <strong>TRIGGER</strong>.
-              <br/>
-              <em className="text-xs opacity-50">Any Block = Dead Signal.</em>
+              <strong>The Rule:</strong> If the Virus succeeds, the destination <strong>FLIPS COLOR</strong>.
+              <br />
+              <span className="text-white font-mono bg-black px-1 rounded">INFECT_MATCH</span>: Succeeds if colors are the same.
+              <br />
+              <span className="text-white font-mono bg-black px-1 rounded">INFECT_DIFF</span>: Succeeds if colors differ.
+              <br /><br />
+              <strong>Calculation:</strong> You must update the color of the Middle Node before solving the Final Node.
             </p>
           </div>
           {/* 6. Spatial */}
@@ -517,15 +559,15 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
             <div className="text-xs text-slate-500 uppercase font-bold mb-2">Relative Heading</div>
             <p className="text-slate-400 text-sm leading-relaxed">
               You are a compass needle starting <strong>NORTH</strong>. Codes are relative turns.
-              <br/><br/>
+              <br /><br />
               <strong>Calculation:</strong> Track your rotation state.
-              <br/>
+              <br />
               Start(N) + Turn Right(90) + Turn Right(90) = <span className="text-white font-mono bg-black px-1 rounded">180_FLIP</span> (South).
             </p>
           </div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">7. DEICTIC</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Ghost Camera</div><p className="text-slate-400 text-sm leading-relaxed">1. <strong>YOU:</strong> Flip 180°.<br/>2. <strong>THEN:</strong> Flip 180°.<br/>From that *new* spot, where is the target?</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">8. CONDITIONAL</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Prism (Stroop)</div><p className="text-slate-400 text-sm leading-relaxed"><strong>1. Filter:</strong> Check the <strong className="text-white">Border Shape</strong>. The Dictionary tells you to read the <em>Text</em> or the <em>Ink Color</em>.<br/><strong>2. Modify:</strong> Apply the Code (Keep or Invert).<br/><br/><strong>Calculation:</strong><br/>Input (Blue Ink) + Rule (Invert) = <span className="text-white font-mono bg-black px-1 rounded">RED</span>.</p></div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 col-span-1 md:col-span-2"><div className="text-emerald-400 font-black text-lg mb-2">9. ANALOGY</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Meta-Match</div><p className="text-slate-400 text-sm leading-relaxed">Compare Relationships.<br/>Net 1 (Causes) vs Net 2 (Prevents) = <span className="text-white font-mono bg-black px-1 rounded">NON-ANALOGOUS</span>.</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">7. DEICTIC</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Ghost Camera</div><p className="text-slate-400 text-sm leading-relaxed">1. <strong>YOU:</strong> Flip 180°.<br />2. <strong>THEN:</strong> Flip 180°.<br />From that *new* spot, where is the target?</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800"><div className="text-emerald-400 font-black text-lg mb-2">8. CONDITIONAL</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Prism (Stroop)</div><p className="text-slate-400 text-sm leading-relaxed"><strong>1. Filter:</strong> Check the <strong className="text-white">Border Shape</strong>. The Dictionary tells you to read the <em>Text</em> or the <em>Ink Color</em>.<br /><strong>2. Modify:</strong> Apply the Code (Keep or Invert).<br /><br /><strong>Calculation:</strong><br />Input (Blue Ink) + Rule (Invert) = <span className="text-white font-mono bg-black px-1 rounded">RED</span>.</p></div>
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 col-span-1 md:col-span-2"><div className="text-emerald-400 font-black text-lg mb-2">9. ANALOGY</div><div className="text-xs text-slate-500 uppercase font-bold mb-2">The Meta-Match</div><p className="text-slate-400 text-sm leading-relaxed">Compare Relationships.<br />Net 1 (Causes) vs Net 2 (Prevents) = <span className="text-white font-mono bg-black px-1 rounded">NON-ANALOGOUS</span>.</p></div>
         </div>
       </div>
     </div>
@@ -535,7 +577,7 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
 // --- Main Engine ---
 
 export default function ProjectOmegaUltimate() {
-  
+
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [config, setConfig] = useState<GameConfig>(() => {
@@ -577,21 +619,21 @@ export default function ProjectOmegaUltimate() {
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const startTimeRef = useRef(0);
   const [tempConfig, setTempConfig] = useState<GameConfig>(config);
-  
+
   const getPracticeEloFromType = (t?: GeneratorType) => {
-      if (!t) return 1000;
-      const map: Record<GeneratorType, number> = {
-          'FLUX_FEATURE': 1000,
-          'FLUX_COMPARISON': 1100,
-          'FLUX_OPPOSITION': 1200,
-          'FLUX_HIERARCHY': 1300,
-          'FLUX_CAUSAL': 1400,
-          'FLUX_SPATIAL': 1500,
-          'FLUX_DEICTIC': 1600,
-          'FLUX_CONDITIONAL': 1700,
-          'FLUX_ANALOGY': 1800
-      };
-      return map[t];
+    if (!t) return 1000;
+    const map: Record<GeneratorType, number> = {
+      'FLUX_FEATURE': 1000,
+      'FLUX_COMPARISON': 1100,
+      'FLUX_OPPOSITION': 1200,
+      'FLUX_HIERARCHY': 1300,
+      'FLUX_CAUSAL': 1400,
+      'FLUX_SPATIAL': 1500,
+      'FLUX_DEICTIC': 1600,
+      'FLUX_CONDITIONAL': 1700,
+      'FLUX_ANALOGY': 1800
+    };
+    return map[t];
   };
 
   const updateElo = (isCorrect: boolean) => {
@@ -612,18 +654,18 @@ export default function ProjectOmegaUltimate() {
 
     let type: GeneratorType = 'FLUX_FEATURE';
     if (isRepairMode && repairTargetType) {
-        type = repairTargetType;
+      type = repairTargetType;
     } else if (config.isPracticeMode && config.practiceType) {
-        type = config.practiceType;
+      type = config.practiceType;
     } else {
-        if (activeElo >= 1100) type = 'FLUX_COMPARISON';
-        if (activeElo >= 1200) type = 'FLUX_OPPOSITION';
-        if (activeElo >= 1300) type = 'FLUX_HIERARCHY';
-        if (activeElo >= 1400) type = 'FLUX_CAUSAL';
-        if (activeElo >= 1500) type = 'FLUX_SPATIAL';
-        if (activeElo >= 1600) type = 'FLUX_DEICTIC';
-        if (activeElo >= 1700) type = 'FLUX_CONDITIONAL';
-        if (activeElo >= 1800) type = 'FLUX_ANALOGY';
+      if (activeElo >= 1100) type = 'FLUX_COMPARISON';
+      if (activeElo >= 1200) type = 'FLUX_OPPOSITION';
+      if (activeElo >= 1300) type = 'FLUX_HIERARCHY';
+      if (activeElo >= 1400) type = 'FLUX_CAUSAL';
+      if (activeElo >= 1500) type = 'FLUX_SPATIAL';
+      if (activeElo >= 1600) type = 'FLUX_DEICTIC';
+      if (activeElo >= 1700) type = 'FLUX_CONDITIONAL';
+      if (activeElo >= 1800) type = 'FLUX_ANALOGY';
     }
 
     const shouldMatch = Math.random() > 0.5;
@@ -631,7 +673,7 @@ export default function ProjectOmegaUltimate() {
     const prevResult = prevNItem ? prevNItem.result : null;
 
     let turnData;
-    switch(type) {
+    switch (type) {
       case 'FLUX_FEATURE': turnData = generateFluxFeature(prevResult, shouldMatch); break;
       case 'FLUX_COMPARISON': turnData = generateFluxComparison(prevResult, shouldMatch); break;
       case 'FLUX_OPPOSITION': turnData = generateFluxOpposition(prevResult, shouldMatch); break;
@@ -645,41 +687,41 @@ export default function ProjectOmegaUltimate() {
     }
 
     // --- APPLY META MODIFIERS (Negation Only) ---
-    if (!isRepairMode) { 
-        turnData = applyMetaModifiers(turnData);
+    if (!isRepairMode) {
+      turnData = applyMetaModifiers(turnData);
     }
 
     const newItem: HistoryItem = { result: turnData.result, stimulus: turnData.stim };
-    
+
     // REPAIR MODE LOGIC
     if (isRepairMode) {
-        const makeMatch = Math.random() > 0.5;
-        if (makeMatch) {
-            setRepairTargetResult(newItem.result);
-        } else {
-            let possible: string[] = [];
-            switch(type) {
-                case 'FLUX_FEATURE': possible = ['MATCH_COLOR', 'MATCH_SHAPE', 'EXACT', 'NONE']; break;
-                case 'FLUX_COMPARISON': possible = ['GREATER', 'LESSER']; break;
-                case 'FLUX_OPPOSITION': possible = ['SAME', 'OPPOSITE', 'DIFFERENT']; break;
-                case 'FLUX_HIERARCHY': possible = ['HIGHER', 'LOWER', 'SAME']; break;
-                case 'FLUX_CAUSAL': possible = ['TRIGGER', 'BLOCK']; break;
-                case 'FLUX_SPATIAL': possible = ['NORTH_EAST', 'NORTH_WEST', 'SOUTH_EAST', 'SOUTH_WEST', 'NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP']; break;
-                case 'FLUX_DEICTIC': possible = ['LEFT', 'RIGHT', 'FRONT', 'BACK']; break;
-                case 'FLUX_CONDITIONAL': possible = ['RED', 'BLUE']; break;
-                case 'FLUX_ANALOGY': possible = ['ANALOGOUS', 'NON_ANALOGOUS']; break;
-                default: possible = [newItem.result]; 
-            }
-            const distractor = getRandomItem(possible.filter(r => r !== newItem.result));
-            setRepairTargetResult(distractor || newItem.result); 
+      const makeMatch = Math.random() > 0.5;
+      if (makeMatch) {
+        setRepairTargetResult(newItem.result);
+      } else {
+        let possible: string[] = [];
+        switch (type) {
+          case 'FLUX_FEATURE': possible = ['MATCH_COLOR', 'MATCH_SHAPE', 'EXACT', 'NONE']; break;
+          case 'FLUX_COMPARISON': possible = ['GREATER', 'LESSER']; break;
+          case 'FLUX_OPPOSITION': possible = ['SAME', 'OPPOSITE', 'DIFFERENT']; break;
+          case 'FLUX_HIERARCHY': possible = ['HIGHER', 'LOWER', 'SAME']; break;
+          case 'FLUX_CAUSAL': possible = ['TRIGGER', 'BLOCK']; break;
+          case 'FLUX_SPATIAL': possible = ['NORTH_EAST', 'NORTH_WEST', 'SOUTH_EAST', 'SOUTH_WEST', 'NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP']; break;
+          case 'FLUX_DEICTIC': possible = ['LEFT', 'RIGHT', 'FRONT', 'BACK']; break;
+          case 'FLUX_CONDITIONAL': possible = ['RED', 'BLUE']; break;
+          case 'FLUX_ANALOGY': possible = ['ANALOGOUS', 'NON_ANALOGOUS']; break;
+          default: possible = [newItem.result];
         }
+        const distractor = getRandomItem(possible.filter(r => r !== newItem.result));
+        setRepairTargetResult(distractor || newItem.result);
+      }
     }
 
     setCurrentItem(newItem);
     setHistory(prev => [...prev, newItem]);
     setTurnCount(c => c + 1);
-    
-    if (config.baseTimer === -1) { setTimer(100); } 
+
+    if (config.baseTimer === -1) { setTimer(100); }
     else {
       const cost = getComplexityCost(newItem.stimulus);
       const difficultyMod = Math.max(0, (activeElo - 1000) / 1000);
@@ -691,30 +733,30 @@ export default function ProjectOmegaUltimate() {
   }, [activeElo, history, config, phase, isRepairMode, repairTargetType]);
 
   const handleAnswer = useCallback((userMatch: boolean) => {
-    
+
     // --- REPAIR MODE ANSWER LOGIC ---
     if (isRepairMode && currentItem) {
-        const isTargetActuallyTrue = currentItem.result === repairTargetResult;
-        const isCorrect = userMatch === isTargetActuallyTrue;
-        
-        if (isCorrect) {
-            const newStreak = repairSuccesses + 1;
-            setRepairSuccesses(newStreak);
-            if (newStreak >= 3) {
-                setIsRepairMode(false);
-                setRepairTargetType(null);
-                setConsecutiveFailures(0);
-                setRepairSuccesses(0);
-            }
-        } else {
-            setRepairSuccesses(0); 
+      const isTargetActuallyTrue = currentItem.result === repairTargetResult;
+      const isCorrect = userMatch === isTargetActuallyTrue;
+
+      if (isCorrect) {
+        const newStreak = repairSuccesses + 1;
+        setRepairSuccesses(newStreak);
+        if (newStreak >= 3) {
+          setIsRepairMode(false);
+          setRepairTargetType(null);
+          setConsecutiveFailures(0);
+          setRepairSuccesses(0);
         }
-        
-        setLogs(prev => [{
-            id: turnCount, timestamp: new Date().toLocaleTimeString(), elo: activeElo, nBackItem: null, currentItem: currentItem, userAnswer: userMatch, isMatch: isTargetActuallyTrue, isCorrect: isCorrect, reactionTime: Date.now() - startTimeRef.current, isRepair: true
-        }, ...prev]);
-        setPhase('FEEDBACK');
-        return;
+      } else {
+        setRepairSuccesses(0);
+      }
+
+      setLogs(prev => [{
+        id: turnCount, timestamp: new Date().toLocaleTimeString(), elo: activeElo, nBackItem: null, currentItem: currentItem, userAnswer: userMatch, isMatch: isTargetActuallyTrue, isCorrect: isCorrect, reactionTime: Date.now() - startTimeRef.current, isRepair: true
+      }, ...prev]);
+      setPhase('FEEDBACK');
+      return;
     }
 
     // --- STANDARD LOGIC ---
@@ -724,16 +766,16 @@ export default function ProjectOmegaUltimate() {
     const target = history[history.length - 1 - n];
     const isMatch = current.result === target.result;
     const isCorrect = userMatch === isMatch;
-    
+
     if (!isCorrect) {
-        setConsecutiveFailures(p => p + 1);
-        if (consecutiveFailures + 1 >= 3) {
-            setIsRepairMode(true);
-            setRepairTargetType(current.stimulus.type);
-            setRepairSuccesses(0);
-        }
+      setConsecutiveFailures(p => p + 1);
+      if (consecutiveFailures + 1 >= 3) {
+        setIsRepairMode(true);
+        setRepairTargetType(current.stimulus.type);
+        setRepairSuccesses(0);
+      }
     } else {
-        setConsecutiveFailures(0);
+      setConsecutiveFailures(0);
     }
 
     updateElo(isCorrect);
@@ -744,9 +786,9 @@ export default function ProjectOmegaUltimate() {
   }, [config.nBackLevel, history, turnCount, activeElo, isRepairMode, repairSuccesses, consecutiveFailures, currentItem, nextTurn, repairTargetResult]);
 
   const handleContinue = useCallback(() => {
-     if (history.length < config.nBackLevel && !isRepairMode) setPhase('WARMUP');
-     else setPhase('PLAYING');
-     nextTurn();
+    if (history.length < config.nBackLevel && !isRepairMode) setPhase('WARMUP');
+    else setPhase('PLAYING');
+    nextTurn();
   }, [history.length, config.nBackLevel, nextTurn, isRepairMode]);
 
   useEffect(() => {
@@ -760,20 +802,20 @@ export default function ProjectOmegaUltimate() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (phase === 'PLAYING' || phase === 'WARMUP') {
-            const isLeft = e.code === 'KeyD' || e.code === 'ArrowLeft';
-            const isRight = e.code === 'KeyJ' || e.code === 'ArrowRight';
-            if (!isLeft && !isRight) return;
-            if (isRepairMode) {
-               if (isLeft) handleAnswer(false); // FALSE
-               else handleAnswer(true);         // TRUE
-            } else if (isButtonsFlipped) { 
-               if (isLeft) handleAnswer(true); else handleAnswer(false); 
-            } else { 
-               if (isLeft) handleAnswer(false); else handleAnswer(true); 
-            }
+      if (phase === 'PLAYING' || phase === 'WARMUP') {
+        const isLeft = e.code === 'KeyD' || e.code === 'ArrowLeft';
+        const isRight = e.code === 'KeyJ' || e.code === 'ArrowRight';
+        if (!isLeft && !isRight) return;
+        if (isRepairMode) {
+          if (isLeft) handleAnswer(false); // FALSE
+          else handleAnswer(true);         // TRUE
+        } else if (isButtonsFlipped) {
+          if (isLeft) handleAnswer(true); else handleAnswer(false);
+        } else {
+          if (isLeft) handleAnswer(false); else handleAnswer(true);
         }
-        if (phase === 'FEEDBACK' && e.code === 'Enter') handleContinue();
+      }
+      if (phase === 'FEEDBACK' && e.code === 'Enter') handleContinue();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -790,23 +832,23 @@ export default function ProjectOmegaUltimate() {
       {/* Header */}
       <div className="w-full flex justify-between items-center mb-4 border-b border-slate-800 pb-2 z-10 px-2 flex-shrink-0">
         <div className="flex items-center gap-2"><div className="p-1.5 bg-white text-black font-black text-lg rounded shadow-[0_0_15px_rgba(255,255,255,0.3)]">Ω</div><div><div className="font-bold tracking-widest text-base md:text-lg leading-none">OMEGA</div><div className="text-[10px] text-slate-500 uppercase font-mono hidden md:block leading-none">Ultimate RFT Engine</div></div></div>
-        <div className="flex items-center gap-4 md:gap-8 text-xs font-mono uppercase"><div className="text-right"><div className="text-slate-500 text-[10px]">{config.isPracticeMode ? 'PRAC ELO' : 'REAL ELO'}</div><div className={`${config.isPracticeMode ? 'text-yellow-400' : 'text-emerald-400'} font-bold text-base flex items-center gap-2 justify-end`}>{activeElo} {!config.isPracticeMode && (<button onClick={resetRealElo} className="opacity-0 hover:opacity-100 transition-opacity text-red-500"><XCircle className="w-3 h-3"/></button>)}</div></div><button onClick={() => setShowTutorial(true)} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white" title="How to Play"><BookOpen className="w-5 h-5" /></button><button onClick={openSettings} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button></div>
+        <div className="flex items-center gap-4 md:gap-8 text-xs font-mono uppercase"><div className="text-right"><div className="text-slate-500 text-[10px]">{config.isPracticeMode ? 'PRAC ELO' : 'REAL ELO'}</div><div className={`${config.isPracticeMode ? 'text-yellow-400' : 'text-emerald-400'} font-bold text-base flex items-center gap-2 justify-end`}>{activeElo} {!config.isPracticeMode && (<button onClick={resetRealElo} className="opacity-0 hover:opacity-100 transition-opacity text-red-500"><XCircle className="w-3 h-3" /></button>)}</div></div><button onClick={() => setShowTutorial(true)} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white" title="How to Play"><BookOpen className="w-5 h-5" /></button><button onClick={openSettings} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button></div>
       </div>
-      
+
       {/* REPAIR MODE BANNER */}
-      {isRepairMode && (<div className="absolute top-16 left-0 w-full bg-red-900/90 text-white text-center py-1 text-xs font-bold uppercase tracking-widest z-50 animate-pulse border-y border-red-500"><Wrench className="w-3 h-3 inline mr-2"/> JAMMED GUN PROTOCOL: REPAIRING {repairTargetType?.replace('FLUX_', '')} ({repairSuccesses}/3)</div>)}
-      
+      {isRepairMode && (<div className="absolute top-16 left-0 w-full bg-red-900/90 text-white text-center py-1 text-xs font-bold uppercase tracking-widest z-50 animate-pulse border-y border-red-500"><Wrench className="w-3 h-3 inline mr-2" /> JAMMED GUN PROTOCOL: REPAIRING {repairTargetType?.replace('FLUX_', '')} ({repairSuccesses}/3)</div>)}
+
       {/* Settings & Tutorial Modals */}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
       {showSettings && (
         <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-           <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl flex flex-col gap-6">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-4"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings className="w-5 h-5 text-purple-400"/> CONFIGURATION</h2><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white"><XCircle className="w-6 h-6"/></button></div>
-              <div className="flex flex-col gap-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-widest">N-Back Level: <span className="text-white text-base ml-2">{tempConfig.nBackLevel}</span></label><input type="range" min="1" max="9" step="1" value={tempConfig.nBackLevel} onChange={(e) => setTempConfig(p => ({...p, nBackLevel: parseInt(e.target.value)}))} className="w-full accent-purple-500 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"/></div>
-              <div className="flex flex-col gap-2"><div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Timer Base</label><div className="flex items-center gap-2"><span className={`text-xs ${tempConfig.baseTimer === -1 ? 'text-slate-600' : 'text-purple-400'}`}>INFINITE</span><button onClick={() => setTempConfig(p => ({...p, baseTimer: p.baseTimer === -1 ? 10 : -1}))} className={`w-10 h-5 rounded-full relative transition-colors ${tempConfig.baseTimer === -1 ? 'bg-purple-500' : 'bg-slate-700'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${tempConfig.baseTimer === -1 ? 'left-6' : 'left-1'}`} /></button></div></div>{tempConfig.baseTimer !== -1 && (<input type="range" min="3" max="30" step="1" value={tempConfig.baseTimer} onChange={(e) => setTempConfig(p => ({...p, baseTimer: parseInt(e.target.value)}))} className="w-full accent-emerald-500 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"/>)}</div><div className="h-px bg-slate-800 w-full my-2"/>
-              <div className="flex flex-col gap-4"><div className="flex justify-between items-center"><div><div className="text-sm font-bold text-white">PRACTICE MODE</div></div><button onClick={() => setTempConfig(p => ({...p, isPracticeMode: !p.isPracticeMode}))} className={`w-12 h-6 rounded-full relative transition-colors ${tempConfig.isPracticeMode ? 'bg-yellow-500' : 'bg-slate-700'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${tempConfig.isPracticeMode ? 'left-7' : 'left-1'}`} /></button></div>{tempConfig.isPracticeMode && (<div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex flex-col gap-3"><div className="flex justify-between items-center"><label className="text-xs font-bold text-yellow-500 uppercase">Select Frame</label><span className="text-xs text-slate-400 font-mono">Elo Locked</span></div><div className="grid grid-cols-2 gap-2">{[{ id: 'FLUX_FEATURE', label: 'Feature', elo: 1000 }, { id: 'FLUX_COMPARISON', label: 'Comparison', elo: 1100 }, { id: 'FLUX_OPPOSITION', label: 'Opposition', elo: 1200 }, { id: 'FLUX_HIERARCHY', label: 'Hierarchy', elo: 1300 }, { id: 'FLUX_CAUSAL', label: 'Causal', elo: 1400 }, { id: 'FLUX_SPATIAL', label: 'Spatial', elo: 1500 }, { id: 'FLUX_DEICTIC', label: 'Deictic', elo: 1600 }, { id: 'FLUX_CONDITIONAL', label: 'Conditional', elo: 1700 }, { id: 'FLUX_ANALOGY', label: 'Analogy', elo: 1800 }].map((mode) => (<button key={mode.id} onClick={() => setTempConfig(p => ({...p, practiceType: mode.id as GeneratorType}))} className={`text-[10px] md:text-xs font-bold p-2 rounded border transition-all ${tempConfig.practiceType === mode.id ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'}`}>{mode.label} <span className="opacity-50">({mode.elo})</span></button>))}</div></div>)}</div>
-              <button onClick={saveSettings} className="mt-4 w-full py-3 bg-white text-black font-black rounded-xl hover:bg-slate-200 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> SAVE & RESTART</button>
-           </div>
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl flex flex-col gap-6">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings className="w-5 h-5 text-purple-400" /> CONFIGURATION</h2><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white"><XCircle className="w-6 h-6" /></button></div>
+            <div className="flex flex-col gap-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-widest">N-Back Level: <span className="text-white text-base ml-2">{tempConfig.nBackLevel}</span></label><input type="range" min="1" max="9" step="1" value={tempConfig.nBackLevel} onChange={(e) => setTempConfig(p => ({ ...p, nBackLevel: parseInt(e.target.value) }))} className="w-full accent-purple-500 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer" /></div>
+            <div className="flex flex-col gap-2"><div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Timer Base</label><div className="flex items-center gap-2"><span className={`text-xs ${tempConfig.baseTimer === -1 ? 'text-slate-600' : 'text-purple-400'}`}>INFINITE</span><button onClick={() => setTempConfig(p => ({ ...p, baseTimer: p.baseTimer === -1 ? 10 : -1 }))} className={`w-10 h-5 rounded-full relative transition-colors ${tempConfig.baseTimer === -1 ? 'bg-purple-500' : 'bg-slate-700'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${tempConfig.baseTimer === -1 ? 'left-6' : 'left-1'}`} /></button></div></div>{tempConfig.baseTimer !== -1 && (<input type="range" min="3" max="30" step="1" value={tempConfig.baseTimer} onChange={(e) => setTempConfig(p => ({ ...p, baseTimer: parseInt(e.target.value) }))} className="w-full accent-emerald-500 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer" />)}</div><div className="h-px bg-slate-800 w-full my-2" />
+            <div className="flex flex-col gap-4"><div className="flex justify-between items-center"><div><div className="text-sm font-bold text-white">PRACTICE MODE</div></div><button onClick={() => setTempConfig(p => ({ ...p, isPracticeMode: !p.isPracticeMode }))} className={`w-12 h-6 rounded-full relative transition-colors ${tempConfig.isPracticeMode ? 'bg-yellow-500' : 'bg-slate-700'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${tempConfig.isPracticeMode ? 'left-7' : 'left-1'}`} /></button></div>{tempConfig.isPracticeMode && (<div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex flex-col gap-3"><div className="flex justify-between items-center"><label className="text-xs font-bold text-yellow-500 uppercase">Select Frame</label><span className="text-xs text-slate-400 font-mono">Elo Locked</span></div><div className="grid grid-cols-2 gap-2">{[{ id: 'FLUX_FEATURE', label: 'Feature', elo: 1000 }, { id: 'FLUX_COMPARISON', label: 'Comparison', elo: 1100 }, { id: 'FLUX_OPPOSITION', label: 'Opposition', elo: 1200 }, { id: 'FLUX_HIERARCHY', label: 'Hierarchy', elo: 1300 }, { id: 'FLUX_CAUSAL', label: 'Causal', elo: 1400 }, { id: 'FLUX_SPATIAL', label: 'Spatial', elo: 1500 }, { id: 'FLUX_DEICTIC', label: 'Deictic', elo: 1600 }, { id: 'FLUX_CONDITIONAL', label: 'Conditional', elo: 1700 }, { id: 'FLUX_ANALOGY', label: 'Analogy', elo: 1800 }].map((mode) => (<button key={mode.id} onClick={() => setTempConfig(p => ({ ...p, practiceType: mode.id as GeneratorType }))} className={`text-[10px] md:text-xs font-bold p-2 rounded border transition-all ${tempConfig.practiceType === mode.id ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'}`}>{mode.label} <span className="opacity-50">({mode.elo})</span></button>))}</div></div>)}</div>
+            <button onClick={saveSettings} className="mt-4 w-full py-3 bg-white text-black font-black rounded-xl hover:bg-slate-200 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> SAVE & RESTART</button>
+          </div>
         </div>
       )}
 
@@ -815,52 +857,52 @@ export default function ProjectOmegaUltimate() {
         {phase === 'IDLE' && (
           <div className="bg-slate-900 border border-slate-800 p-8 md:p-12 rounded-3xl text-center shadow-2xl mx-auto w-full max-w-4xl animate-in fade-in zoom-in-95">
             <h1 className="text-3xl md:text-5xl font-black text-white mb-6">COGNITIVE FLUX</h1>
-            <p className="text-slate-400 text-sm md:text-base mb-10 leading-relaxed">Ultimate Relational Frame Training.<br/>Decode the <span className="text-purple-400 font-bold">Blind Cipher</span>. Match the Logic to N-{config.nBackLevel}.</p>
-            <div className="flex justify-center gap-6 mb-10 text-slate-500"><div className="flex flex-col items-center gap-2"><Cpu className="w-6 h-6"/><span>Cipher</span></div><div className="flex flex-col items-center gap-2"><Network className="w-6 h-6"/><span>Graph</span></div><div className="flex flex-col items-center gap-2"><BrainCircuit className="w-6 h-6"/><span>Logic</span></div></div>
+            <p className="text-slate-400 text-sm md:text-base mb-10 leading-relaxed">Ultimate Relational Frame Training.<br />Decode the <span className="text-purple-400 font-bold">Blind Cipher</span>. Match the Logic to N-{config.nBackLevel}.</p>
+            <div className="flex justify-center gap-6 mb-10 text-slate-500"><div className="flex flex-col items-center gap-2"><Cpu className="w-6 h-6" /><span>Cipher</span></div><div className="flex flex-col items-center gap-2"><Network className="w-6 h-6" /><span>Graph</span></div><div className="flex flex-col items-center gap-2"><BrainCircuit className="w-6 h-6" /><span>Logic</span></div></div>
             <div className="flex flex-col items-center w-full gap-4">
-                <button onClick={() => setShowTutorial(true)} className="px-8 py-3 bg-slate-800 text-slate-300 font-bold tracking-widest rounded-xl hover:bg-slate-700 transition-transform hover:scale-105 flex items-center justify-center gap-2 text-xs border border-slate-700"><BookOpen className="w-4 h-4"/> HOW TO PLAY</button>
-                <button onClick={init} className="w-full max-w-md py-5 bg-white text-black font-black tracking-widest rounded-xl hover:bg-slate-200 transition-transform hover:scale-[1.02] flex items-center justify-center gap-3 text-lg shadow-xl shadow-white/10"><Zap className="w-5 h-5 fill-current"/> INITIALIZE</button>
+              <button onClick={() => setShowTutorial(true)} className="px-8 py-3 bg-slate-800 text-slate-300 font-bold tracking-widest rounded-xl hover:bg-slate-700 transition-transform hover:scale-105 flex items-center justify-center gap-2 text-xs border border-slate-700"><BookOpen className="w-4 h-4" /> HOW TO PLAY</button>
+              <button onClick={init} className="w-full max-w-md py-5 bg-white text-black font-black tracking-widest rounded-xl hover:bg-slate-200 transition-transform hover:scale-[1.02] flex items-center justify-center gap-3 text-lg shadow-xl shadow-white/10"><Zap className="w-5 h-5 fill-current" /> INITIALIZE</button>
             </div>
           </div>
         )}
         {(phase === 'WARMUP' || phase === 'PLAYING') && currentItem && (
           <div className="w-full h-full flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300 gap-4 md:gap-8">
-              <div className={`w-full flex-1 flex flex-col lg:flex-row gap-4 items-center justify-center min-h-0 ${currentItem.stimulus.dictionaryPos === 'RIGHT' ? 'lg:flex-row-reverse' : ''}`}>
-                 <div className="flex-1 p-4 md:p-8 bg-slate-900 border border-slate-700 rounded-[2rem] shadow-2xl flex flex-col items-center justify-center gap-4 w-full h-full max-h-[60vh]"><VisualRenderer stim={currentItem.stimulus} isRepairMode={isRepairMode} /><div className="bg-black px-4 py-2 rounded-lg text-slate-300 font-mono text-sm md:text-lg border border-slate-800 tracking-wider shadow-inner mt-4">{currentItem.stimulus.textQuery}</div></div>
-                 <div className="w-full lg:w-64 flex flex-col gap-2 p-4 bg-slate-900/80 rounded-2xl border border-slate-700 backdrop-blur-sm shadow-xl h-fit"><div className="text-xs text-slate-500 font-bold uppercase mb-1 flex items-center gap-2"><Code className="w-3 h-3 text-purple-400"/> Cipher Key</div>{Object.entries(currentItem.stimulus.dictionary).map(([k,v]) => (<div key={k} className="px-3 py-2 bg-black rounded-lg border border-slate-800 text-xs font-mono flex justify-between items-center group"><span className="text-purple-400 font-bold text-lg">{k}</span><span className="text-slate-600">=</span><span className="text-slate-200 font-bold">{v}</span></div>))}</div>
+            <div className={`w-full flex-1 flex flex-col lg:flex-row gap-4 items-center justify-center min-h-0 ${currentItem.stimulus.dictionaryPos === 'RIGHT' ? 'lg:flex-row-reverse' : ''}`}>
+              <div className="flex-1 p-4 md:p-8 bg-slate-900 border border-slate-700 rounded-[2rem] shadow-2xl flex flex-col items-center justify-center gap-4 w-full h-full max-h-[60vh]"><VisualRenderer stim={currentItem.stimulus} isRepairMode={isRepairMode} /><div className="bg-black px-4 py-2 rounded-lg text-slate-300 font-mono text-sm md:text-lg border border-slate-800 tracking-wider shadow-inner mt-4">{currentItem.stimulus.textQuery}</div></div>
+              <div className="w-full lg:w-64 flex flex-col gap-2 p-4 bg-slate-900/80 rounded-2xl border border-slate-700 backdrop-blur-sm shadow-xl h-fit"><div className="text-xs text-slate-500 font-bold uppercase mb-1 flex items-center gap-2"><Code className="w-3 h-3 text-purple-400" /> Cipher Key</div>{Object.entries(currentItem.stimulus.dictionary).map(([k, v]) => (<div key={k} className="px-3 py-2 bg-black rounded-lg border border-slate-800 text-xs font-mono flex justify-between items-center group"><span className="text-purple-400 font-bold text-lg">{k}</span><span className="text-slate-600">=</span><span className="text-slate-200 font-bold">{v}</span></div>))}</div>
+            </div>
+            <div className="w-full flex flex-col gap-4 flex-shrink-0">
+              {config.baseTimer !== -1 ? (<div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner"><div className={`h-full transition-all duration-100 ease-linear ${timer < 3 ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${(timer / ((config.baseTimer + (getComplexityCost(currentItem.stimulus) - 1) * 1.5) - (Math.max(0, (activeElo - 1000) / 1000) * 2))) * 100}%` }} /></div>) : (<div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner flex items-center justify-center"><div className="w-full h-full bg-slate-800 animate-pulse" /></div>)}
+              <div className="flex gap-4 w-full justify-center">
+                {isRepairMode ? (
+                  <div className="flex flex-col items-center gap-4 w-full">
+                    <div className="text-yellow-400 font-black text-xl uppercase tracking-widest bg-slate-900/80 px-6 py-2 rounded-xl border border-yellow-500/30">VERIFY: {repairTargetResult}</div>
+                    <div className="flex gap-4 w-full">
+                      <button onClick={() => handleAnswer(false)} className="flex-1 py-4 bg-slate-900 border-2 border-red-900/50 text-red-500 font-black text-xl rounded-2xl hover:bg-red-900/20 transition-all shadow-lg active:scale-95">FALSE<div className="text-[10px] opacity-50 mt-1 font-mono">D / ←</div></button>
+                      <button onClick={() => handleAnswer(true)} className="flex-1 py-4 bg-slate-900 border-2 border-emerald-900/50 text-emerald-500 font-black text-xl rounded-2xl hover:bg-emerald-900/20 transition-all shadow-lg active:scale-95">TRUE<div className="text-[10px] opacity-50 mt-1 font-mono">J / →</div></button>
+                    </div>
+                  </div>
+                ) : (
+                  isButtonsFlipped ? (<><button onClick={() => handleAnswer(true)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-emerald-400 hover:border-emerald-500/50 transition-all active:scale-95 shadow-lg group">MATCH<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-emerald-500/50 transition-colors">D / ←</div></button><button onClick={() => handleAnswer(false)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-red-400 hover:border-red-500/50 transition-all active:scale-95 shadow-lg group">NO<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-red-500/50 transition-colors">J / →</div></button></>) : (<><button onClick={() => handleAnswer(false)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-red-400 hover:border-red-500/50 transition-all active:scale-95 shadow-lg group">NO<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-red-500/50 transition-colors">D / ←</div></button><button onClick={() => handleAnswer(true)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-emerald-400 hover:border-emerald-500/50 transition-all active:scale-95 shadow-lg group">MATCH<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-emerald-500/50 transition-colors">J / →</div></button></>)
+                )}
               </div>
-              <div className="w-full flex flex-col gap-4 flex-shrink-0">
-                 {config.baseTimer !== -1 ? (<div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner"><div className={`h-full transition-all duration-100 ease-linear ${timer<3?'bg-red-500':'bg-white'}`} style={{width: `${(timer/((config.baseTimer + (getComplexityCost(currentItem.stimulus)-1)*1.5) - (Math.max(0, (activeElo-1000)/1000)*2)))*100}%`}} /></div>) : (<div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner flex items-center justify-center"><div className="w-full h-full bg-slate-800 animate-pulse" /></div>)}
-                 <div className="flex gap-4 w-full justify-center">
-                     {isRepairMode ? (
-                         <div className="flex flex-col items-center gap-4 w-full">
-                             <div className="text-yellow-400 font-black text-xl uppercase tracking-widest bg-slate-900/80 px-6 py-2 rounded-xl border border-yellow-500/30">VERIFY: {repairTargetResult}</div>
-                             <div className="flex gap-4 w-full">
-                                <button onClick={() => handleAnswer(false)} className="flex-1 py-4 bg-slate-900 border-2 border-red-900/50 text-red-500 font-black text-xl rounded-2xl hover:bg-red-900/20 transition-all shadow-lg active:scale-95">FALSE<div className="text-[10px] opacity-50 mt-1 font-mono">D / ←</div></button>
-                                <button onClick={() => handleAnswer(true)} className="flex-1 py-4 bg-slate-900 border-2 border-emerald-900/50 text-emerald-500 font-black text-xl rounded-2xl hover:bg-emerald-900/20 transition-all shadow-lg active:scale-95">TRUE<div className="text-[10px] opacity-50 mt-1 font-mono">J / →</div></button>
-                             </div>
-                         </div>
-                     ) : (
-                         isButtonsFlipped ? (<><button onClick={() => handleAnswer(true)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-emerald-400 hover:border-emerald-500/50 transition-all active:scale-95 shadow-lg group">MATCH<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-emerald-500/50 transition-colors">D / ←</div></button><button onClick={() => handleAnswer(false)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-red-400 hover:border-red-500/50 transition-all active:scale-95 shadow-lg group">NO<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-red-500/50 transition-colors">J / →</div></button></>) : (<><button onClick={() => handleAnswer(false)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-red-400 hover:border-red-500/50 transition-all active:scale-95 shadow-lg group">NO<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-red-500/50 transition-colors">D / ←</div></button><button onClick={() => handleAnswer(true)} className="flex-1 py-4 md:py-6 bg-slate-900 border-2 border-slate-800 text-slate-400 font-black text-xl md:text-2xl rounded-2xl hover:bg-slate-800 hover:text-emerald-400 hover:border-emerald-500/50 transition-all active:scale-95 shadow-lg group">MATCH<div className="text-[10px] text-slate-600 font-mono mt-1 group-hover:text-emerald-500/50 transition-colors">J / →</div></button></>)
-                     )}
-                 </div>
-              </div>
+            </div>
           </div>
         )}
         {phase === 'FEEDBACK' && logs.length > 0 && logs[0].currentItem && (
           <div className="w-full h-full max-h-full flex flex-col animate-in zoom-in-95 overflow-hidden">
-              <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl flex flex-col h-full overflow-hidden">
-                 <div className={`p-4 flex flex-shrink-0 justify-between items-center ${logs[0].isCorrect ? 'bg-emerald-950/30 text-emerald-400' : 'bg-red-950/30 text-red-400'} border-b border-slate-800`}><div className="flex items-center gap-3">{logs[0].isCorrect ? <CheckCircle className="w-6 h-6"/> : <XCircle className="w-6 h-6"/>}<h2 className="text-xl md:text-2xl font-black tracking-tight">{logs[0].isCorrect ? 'VERIFIED' : 'FAILED'}</h2></div><div className="text-xs font-mono opacity-70 bg-black/30 px-2 py-1 rounded">{Math.round(logs[0].reactionTime)}ms</div></div>
-                 <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800 min-h-0">
-                    {!logs[0].isRepair && logs[0].nBackItem && (<div className="p-4 flex flex-col items-center opacity-60 bg-slate-950/30"><div className="text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-full border border-slate-800"><History className="w-3 h-3"/> N-{config.nBackLevel}</div><div className="mb-2 scale-[0.65] origin-center"><VisualRenderer stim={logs[0].nBackItem.stimulus} /></div><BlurredLogicBox label="Target Logic" result={logs[0].nBackItem.result} proof={logs[0].nBackItem.stimulus.logicProof} /></div>)}
-                    <div className={`p-4 flex flex-col items-center bg-slate-900/50 ${logs[0].isRepair ? 'col-span-2' : ''}`}><div className="text-[10px] font-bold text-emerald-500 uppercase mb-2 flex items-center gap-2 px-3 py-1 bg-emerald-900/10 rounded-full border border-emerald-500/20"><Activity className="w-3 h-3"/> Current</div><div className="mb-2 scale-[0.75] origin-center"><VisualRenderer stim={logs[0].currentItem.stimulus} isRepairMode={logs[0].isRepair} /></div><BlurredLogicBox label="Derived Logic" result={logs[0].currentItem.result} proof={logs[0].currentItem.stimulus.logicProof} isCurrent={true} revealOverride={logs[0].isRepair} /></div>
-                 </div>
-                 <div className="p-4 bg-slate-950 border-t border-slate-800 text-center flex flex-col items-center gap-3 flex-shrink-0">
-                    {!logs[0].isRepair && (<div className="flex flex-col items-center gap-1"><div className="text-xs text-slate-400">Logic Check: <span className="text-white font-bold px-1">{logs[0].currentItem.result}</span> vs <span className="text-slate-400 font-bold px-1">{logs[0].nBackItem ? logs[0].nBackItem.result : '???'}</span></div><div className={`text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-0.5 rounded-full ${logs[0].isMatch ? 'bg-blue-900/20 text-blue-400' : 'bg-slate-800 text-slate-500'}`}>{logs[0].isMatch ? 'MATCH FOUND' : 'NO MATCH'}</div></div>)}
-                    <button onClick={handleContinue} className="w-full py-4 bg-white text-black font-black text-lg tracking-widest hover:bg-slate-200 transition-colors flex items-center justify-center gap-3 rounded-xl">CONTINUE <FastForward className="w-5 h-5 fill-current"/></button>
-                    <div className="text-[10px] text-slate-500 font-mono mt-2">Press ENTER</div>
-                 </div>
+            <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl flex flex-col h-full overflow-hidden">
+              <div className={`p-4 flex flex-shrink-0 justify-between items-center ${logs[0].isCorrect ? 'bg-emerald-950/30 text-emerald-400' : 'bg-red-950/30 text-red-400'} border-b border-slate-800`}><div className="flex items-center gap-3">{logs[0].isCorrect ? <CheckCircle className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}<h2 className="text-xl md:text-2xl font-black tracking-tight">{logs[0].isCorrect ? 'VERIFIED' : 'FAILED'}</h2></div><div className="text-xs font-mono opacity-70 bg-black/30 px-2 py-1 rounded">{Math.round(logs[0].reactionTime)}ms</div></div>
+              <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800 min-h-0">
+                {!logs[0].isRepair && logs[0].nBackItem && (<div className="p-4 flex flex-col items-center opacity-60 bg-slate-950/30"><div className="text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-full border border-slate-800"><History className="w-3 h-3" /> N-{config.nBackLevel}</div><div className="mb-2 scale-[0.65] origin-center"><VisualRenderer stim={logs[0].nBackItem.stimulus} /></div><BlurredLogicBox label="Target Logic" result={logs[0].nBackItem.result} proof={logs[0].nBackItem.stimulus.logicProof} /></div>)}
+                <div className={`p-4 flex flex-col items-center bg-slate-900/50 ${logs[0].isRepair ? 'col-span-2' : ''}`}><div className="text-[10px] font-bold text-emerald-500 uppercase mb-2 flex items-center gap-2 px-3 py-1 bg-emerald-900/10 rounded-full border border-emerald-500/20"><Activity className="w-3 h-3" /> Current</div><div className="mb-2 scale-[0.75] origin-center"><VisualRenderer stim={logs[0].currentItem.stimulus} isRepairMode={logs[0].isRepair} /></div><BlurredLogicBox label="Derived Logic" result={logs[0].currentItem.result} proof={logs[0].currentItem.stimulus.logicProof} isCurrent={true} revealOverride={logs[0].isRepair} /></div>
               </div>
+              <div className="p-4 bg-slate-950 border-t border-slate-800 text-center flex flex-col items-center gap-3 flex-shrink-0">
+                {!logs[0].isRepair && (<div className="flex flex-col items-center gap-1"><div className="text-xs text-slate-400">Logic Check: <span className="text-white font-bold px-1">{logs[0].currentItem.result}</span> vs <span className="text-slate-400 font-bold px-1">{logs[0].nBackItem ? logs[0].nBackItem.result : '???'}</span></div><div className={`text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-0.5 rounded-full ${logs[0].isMatch ? 'bg-blue-900/20 text-blue-400' : 'bg-slate-800 text-slate-500'}`}>{logs[0].isMatch ? 'MATCH FOUND' : 'NO MATCH'}</div></div>)}
+                <button onClick={handleContinue} className="w-full py-4 bg-white text-black font-black text-lg tracking-widest hover:bg-slate-200 transition-colors flex items-center justify-center gap-3 rounded-xl">CONTINUE <FastForward className="w-5 h-5 fill-current" /></button>
+                <div className="text-[10px] text-slate-500 font-mono mt-2">Press ENTER</div>
+              </div>
+            </div>
           </div>
         )}
       </div>
