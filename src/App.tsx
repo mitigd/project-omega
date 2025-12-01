@@ -834,12 +834,37 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
       }
       // 5. CAUSAL
       if (stim.type === 'FLUX_CAUSAL') {
-          const { nodes, ops, isReverse } = stim.visuals;
+          const { nodes, ops, isReverse, nodeColors } = stim.visuals;
+          
+          // Check if we are in Tier 1 (Simple Logic) by checking if dictionary has 'ACTIVATE'
+          // If so, ignore the Red/Blue colors and make them Gray to prevent confusion.
+          const isTier1 = Object.values(stim.dictionary).includes('ACTIVATE');
+          
           const renderNodes = isReverse ? [...nodes].reverse() : nodes;
+          const renderColors = isReverse ? [...nodeColors].reverse() : nodeColors;
           const renderOps = isReverse ? [...ops].reverse() : ops;
           const arrowRotation = isReverse ? 'rotate-180' : '';
-          const getNodeStyle = (color: string) => color === 'RED' ? 'border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'border-blue-500 text-blue-100 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
-          return (<div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100"><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[isReverse?2:0])}`}>{renderNodes[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[0]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[1])}`}>{renderNodes[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl">{renderOps[1]}</div><ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/><div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(stim.visuals.nodeColors[isReverse?0:2])}`}>{renderNodes[2]}</div></div>)
+          
+          const getNodeStyle = (color: string) => {
+              if (isTier1) return 'border-slate-500 text-slate-300 bg-slate-800'; // Tier 1 Neutral
+              return color === 'RED' 
+                  ? 'border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.3)]' 
+                  : 'border-blue-500 text-blue-100 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
+          };
+
+          return (
+              <div className="flex flex-row items-center gap-2 md:gap-4 scale-75 md:scale-100">
+                 <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[0])}`}>{renderNodes[0]}</div>
+                 <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+                 <div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[0]}</div>
+                 <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+                 <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[1])}`}>{renderNodes[1]}</div>
+                 <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+                 <div className="w-12 h-12 border-2 border-slate-600 bg-black rounded flex items-center justify-center text-purple-400 font-bold text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">{renderOps[1]}</div>
+                 <ArrowRight className={`text-slate-500 w-6 h-6 ${arrowRotation}`}/>
+                 <div className={`px-4 py-3 bg-slate-900 rounded-lg font-bold border-2 ${getNodeStyle(renderColors[2])}`}>{renderNodes[2]}</div>
+              </div>
+          )
       }
       // 6. SPATIAL
       if (stim.type === 'FLUX_SPATIAL') {
