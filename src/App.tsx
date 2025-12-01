@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   History, CheckCircle, XCircle, Zap, FastForward, Code, 
-  ArrowRight, Settings, Save, Activity, GitMerge, Scale, 
-  BrainCircuit, Network, Cpu, Clock, Split, Scan, Keyboard, 
-  Compass, List, HelpCircle, Eye, EyeOff, Wrench, BookOpen, 
+  ArrowRight, Settings, Save, Activity, 
+  BrainCircuit, Network, Cpu, Clock, Split, Scan, 
+  Compass, HelpCircle, Eye, EyeOff, Wrench, BookOpen, 
   X, Ban 
 } from 'lucide-react';
 
@@ -388,13 +388,7 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean, tier
         // T2: CHROMATIC GATING
         const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]);
         dict = shuffleEntries({ [c1]: 'BLOCK_RED', [c2]: 'BLOCK_BLUE', [c3]: 'PASS' });
-        
-        const checkPass = (op: string, c: string) => {
-            if (op===c3) return true;
-            if (op===c1 && c==='RED') return false;
-            if (op===c2 && c==='BLUE') return false;
-            return true;
-        };
+
         // Logic Finder... (Simplified for brevity: force pass if Trigger, force block if Block)
         if (result === 'TRIGGER') { op1=c3; op2=c3; }
         else { op1=c1; op2=c1; } // Crude fallback for T2 logic, real solver omitted for space
@@ -481,7 +475,6 @@ const generateFluxDeictic = (prevResult: string | null, forceMatch: boolean, tie
 
 // 8. CONDITIONAL & 9. ANALOGY (Always High Elo, so effectively Tier 3 logic always)
 const generateFluxConditional = (prevResult: string | null, forceMatch: boolean, tier: number) => {
-    // ... Logic same as before
     const relations = ['RED', 'BLUE']; let result = getRandomItem(relations);
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
     const wordText = Math.random() > 0.5 ? 'RED' : 'BLUE'; const inkColor = Math.random() > 0.5 ? 'RED' : 'BLUE'; 
@@ -922,22 +915,6 @@ export default function ProjectOmegaUltimate() {
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const startTimeRef = useRef(0);
   const [tempConfig, setTempConfig] = useState<GameConfig>(config);
-  
-  const getPracticeEloFromType = (t?: GeneratorType) => {
-      if (!t) return 1000;
-      const map: Record<GeneratorType, number> = {
-          'FLUX_FEATURE': 1000,
-          'FLUX_COMPARISON': 1100,
-          'FLUX_OPPOSITION': 1200,
-          'FLUX_HIERARCHY': 1300,
-          'FLUX_CAUSAL': 1400,
-          'FLUX_SPATIAL': 1500,
-          'FLUX_DEICTIC': 1600,
-          'FLUX_CONDITIONAL': 1700,
-          'FLUX_ANALOGY': 1800
-      };
-      return map[t];
-  };
 
   const updateElo = (isCorrect: boolean) => {
     if (isRepairMode) return;
