@@ -159,7 +159,7 @@ const generateFluxFeature = (prevResult: string | null, forceMatch: boolean, tie
   return { stim: { type: 'FLUX_FEATURE', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { start, end }, textQuery: `VERIFY: ${activeCode}`, logicProof: `(Color: ${start.color===end.color?'=':'!='}) & (Shape: ${start.shape===end.shape?'=':'!='})` }, result };
 };
 
-// 2. FLUX COMPARISON (Fixed: Tier 3 now uses distinct symbols to force Symbol+Color processing)
+// 2. FLUX COMPARISON
 const generateFluxComparison = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
   const relations = ['GREATER', 'LESSER'];
   let result = getRandomItem(relations);
@@ -179,60 +179,48 @@ const generateFluxComparison = (prevResult: string | null, forceMatch: boolean, 
       { name: 'PURPLE', class: 'from-purple-900/40 to-purple-900/10' }
   ];
 
-  // Calculate Target Relations needed (e.g. Leaf1 > Hub, Leaf2 < Hub)
+  // 1. Calculate Logic
   const rel1 = result === 'GREATER' ? '>' : '<'; 
   const rel2 = result === 'GREATER' ? '<' : '>'; 
+
+  // 2. Determine Visual Meanings
+  const meaningL = visualLeft === leaf1 ? rel1 : rel2;
+  const rawMeaningR = visualRight === leaf2 ? rel2 : rel1;
+  const meaningR = rawMeaningR === '>' ? '<' : '>'; 
 
   let dict: Record<string, string> = {};
   let visualLeftColor, visualRightColor;
   let visualLeftIcon, visualRightIcon;
 
   if (tier >= 3) {
-      // TIER 3: INDEPENDENT SYMBOL + CONTEXT
-      // We need separate rules for Left and Right to force reading BOTH Symbol and Color.
-      
-      // 1. Pick Colors for Left and Right panels
+      // TIER 3: Contextual
+      // FIX: Force cR to be different from cL
       const cL = getRandomItem(colorOptions);
-      const cR = getRandomItem(colorOptions); // Can be same or different
+      const cR = getRandomItem(colorOptions.filter(c => c.name !== cL.name)); 
       
-      // 2. Pick distinct icons
       const iconL = getRandomItem(ICONS);
       const iconR = getRandomItem(ICONS.filter(i => i !== iconL));
-      
-      // 3. Map specific (Icon + Color) combo to the Meaning required by that side
-      // We need visualLeft to evaluate to the logic of (visualLeft === leaf1 ? rel1 : rel2)
-      const meaningL = visualLeft === leaf1 ? rel1 : rel2;
-      const meaningR = visualRight === leaf2 ? rel2 : rel1;
       
       dict = shuffleEntries({ 
           [`${iconL} (${cL.name})`]: meaningL, 
           [`${iconR} (${cR.name})`]: meaningR 
       });
       
-      visualLeftColor = cL;
-      visualRightColor = cR;
-      visualLeftIcon = iconL;
-      visualRightIcon = iconR;
+      visualLeftColor = cL; visualRightColor = cR;
+      visualLeftIcon = iconL; visualRightIcon = iconR;
 
   } else {
-      // TIER 1 & 2: STANDARD SYMBOLIC LOGIC
+      // TIER 1 & 2: Standard
       const iconBase = getRandomItem(ICONS);
       const iconGr = iconBase;
       const iconLs = getRandomItem(ICONS.filter(i => i !== iconBase));
       
       dict = shuffleEntries({ [iconGr]: '>', [iconLs]: '<' });
       
-      // Assign icons based on meaning
-      // Logic: If visualLeft needs '>', give it iconGr.
-      const logicL = visualLeft === leaf1 ? rel1 : rel2;
-      const logicR = visualRight === leaf2 ? rel2 : rel1;
-      
-      visualLeftIcon = logicL === '>' ? iconGr : iconLs;
-      visualRightIcon = logicR === '>' ? iconGr : iconLs;
+      visualLeftIcon = meaningL === '>' ? iconGr : iconLs;
+      visualRightIcon = meaningR === '>' ? iconGr : iconLs;
 
-      // Colors are uniform/irrelevant
-      visualLeftColor = colorOptions[0]; 
-      visualRightColor = colorOptions[0]; 
+      visualLeftColor = colorOptions[0]; visualRightColor = colorOptions[0]; 
   }
 
   return { 
