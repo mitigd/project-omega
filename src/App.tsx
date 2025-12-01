@@ -345,65 +345,131 @@ const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean, t
 };
 
 // 5. FLUX CAUSAL
+// 5. FLUX CAUSAL (Tier 1: Simple, Tier 2: Chromatic, Tier 3: Viral)
 const generateFluxCausal = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
-    // T1: Block/Trigger. T2: Chromatic Gating. T3: Viral Mutation.
-    const relations = ['TRIGGER', 'BLOCK']; // For T1/T2
-    const relationsT3 = ['RED', 'BLUE']; // For T3
+    // Result Types: T1/T2 use TRIGGER/BLOCK. T3 uses RED/BLUE.
+    const relationsSimple = ['TRIGGER', 'BLOCK'];
+    const relationsViral = ['RED', 'BLUE'];
     
-    let result = getRandomItem(tier >= 3 ? relationsT3 : relations);
-    if (forceMatch && prevResult && (tier >= 3 ? relationsT3 : relations).includes(prevResult)) result = prevResult;
-    else if (!forceMatch && prevResult) result = getRandomItem((tier >= 3 ? relationsT3 : relations).filter(r => r !== prevResult));
+    let result = getRandomItem(tier >= 3 ? relationsViral : relationsSimple);
+    
+    // N-Back Match Logic
+    const currentRelations = tier >= 3 ? relationsViral : relationsSimple;
+    if (forceMatch && prevResult && currentRelations.includes(prevResult)) {
+        result = prevResult;
+    } else if (!forceMatch && prevResult) {
+        // If tier changed, prevResult might not be in currentRelations.
+        // Just pick random if so, or filter if valid.
+        const validOptions = currentRelations.filter(r => r !== prevResult);
+        if (validOptions.length > 0) result = getRandomItem(validOptions);
+    }
   
     // SETUP
     const pool = tier === 1 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'X', 'Y', 'Z', 'P', 'Q', 'R'];
     const nodes = shuffleArray(pool).slice(0, 3);
-    const colors = [Math.random() > 0.5 ? 'RED' : 'BLUE', Math.random() > 0.5 ? 'RED' : 'BLUE', Math.random() > 0.5 ? 'RED' : 'BLUE'];
+    // Generate colors for everyone (T1 ignores them, T2/T3 use them)
+    const colors = [
+        Math.random() > 0.5 ? 'RED' : 'BLUE', 
+        Math.random() > 0.5 ? 'RED' : 'BLUE', 
+        Math.random() > 0.5 ? 'RED' : 'BLUE'
+    ];
+    
     const isReverse = tier >= 2 && Math.random() > 0.5;
 
-    let dict = {};
+    let dict: Record<string, string> = {};
     let op1 = '', op2 = '';
 
     if (tier >= 3) {
-        // T3: VIRAL MUTATION (Unbreakable)
-        const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
-        dict = shuffleEntries({ [c1]: 'INFECT_MATCH', [c2]: 'INFECT_MATCH', [c3]: 'INFECT_DIFF', [c4]: 'INFECT_DIFF' });
-        const matchOps = [c1, c2]; const diffOps = [c3, c4];
+        // --- TIER 3: VIRAL MUTATION (The Unbreakable Logic) ---
+        const c1 = generateCode([]); const c2 = generateCode([c1]); 
+        const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
         
-        // Solver
-        const applyVirus = (op: string, s: string, d: string) => {
-            const success = matchOps.includes(op) ? s===d : s!==d;
-            if (success) return d === 'RED' ? 'BLUE' : 'RED';
-            return d;
-        };
-        let found = false;
+        dict = shuffleEntries({ 
+            [c1]: 'INFECT_MATCH', [c2]: 'INFECT_MATCH', 
+            [c3]: 'INFECT_DIFF', [c4]: 'INFECT_DIFF' 
+        });
+        
+        const matchOps = [c1, c2]; 
+        const diffOps = [c3, c4];
         const allOps = [...matchOps, ...diffOps];
+        
+        // Solver Logic
+        const applyVirus = (op: string, s: string, d: string) => {
+            const success = matchOps.includes(op) ? s === d : s !== d;
+            if (success) return d === 'RED' ? 'BLUE' : 'RED'; // Flip
+            return d; // Stay
+        };
+        
+        let found = false;
+        // Brute force a valid path to the desired Result (Final Color)
         for(let i=0; i<50; i++){
-            const t1 = getRandomItem(allOps); const t2 = getRandomItem(allOps);
-            const n2 = applyVirus(t1, colors[0], colors[1]);
-            const n3 = applyVirus(t2, n2, colors[2]);
-            if (n3 === result) { op1=t1; op2=t2; found=true; break; }
+            const t1 = getRandomItem(allOps); 
+            const t2 = getRandomItem(allOps);
+            
+            const n2 = applyVirus(t1, colors[0], colors[1]); // N2 might flip
+            const n3 = applyVirus(t2, n2, colors[2]);        // N3 might flip
+            
+            if (n3 === result) { 
+                op1=t1; op2=t2; found=true; break; 
+            }
         }
-        if(!found) { op1=c1; op2=c1; } // Fallback
-    } else if (tier === 2) {
-        // T2: CHROMATIC GATING
-        const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]);
-        dict = shuffleEntries({ [c1]: 'BLOCK_RED', [c2]: 'BLOCK_BLUE', [c3]: 'PASS' });
+        if(!found) { op1=c1; op2=c1; } // Fail-safe
 
-        // Logic Finder... (Simplified for brevity: force pass if Trigger, force block if Block)
-        if (result === 'TRIGGER') { op1=c3; op2=c3; }
-        else { op1=c1; op2=c1; } // Crude fallback for T2 logic, real solver omitted for space
+    } else if (tier === 2) {
+        // --- TIER 2: CHROMATIC GATING (Conditional Logic) ---
+        // This was the "Pass Blue / Block Red" logic
+        const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]);
+        dict = shuffleEntries({ 
+            [c1]: 'BLOCK_RED', 
+            [c2]: 'BLOCK_BLUE', 
+            [c3]: 'PASS' 
+        });
+        
+        const allOps = [c1, c2, c3];
+
+        // Helper Logic
+        const checkPass = (op: string, c: string) => {
+            if (op === c3) return true; // Pass
+            if (op === c1 && c === 'RED') return false; // Block Red
+            if (op === c2 && c === 'BLUE') return false; // Block Blue
+            return true; // (e.g. BlockRed vs Blue = Pass)
+        };
+
+        let found = false;
+        // Brute force valid path to Result (Trigger/Block)
+        for(let i=0; i<50; i++){
+            const t1 = getRandomItem(allOps); 
+            const t2 = getRandomItem(allOps);
+            
+            // Flow: N1 -> t1 -> N2 -> t2 -> N3
+            const pass1 = checkPass(t1, colors[0]);
+            // If pass1 failed, signal never reaches N2, so pass2 is irrelevant (Block)
+            const pass2 = pass1 ? checkPass(t2, colors[1]) : false;
+            
+            const outcome = pass2 ? 'TRIGGER' : 'BLOCK';
+            
+            if (outcome === result) {
+                op1 = t1; op2 = t2; found = true; break;
+            }
+        }
+        if(!found) { op1=c3; op2=c3; }
+
     } else {
-        // T1: SIMPLE BLOCK/TRIGGER
+        // --- TIER 1: SIMPLE BLOCK/TRIGGER ---
         const c1 = generateCode([]); const c2 = generateCode([c1]);
         dict = shuffleEntries({ [c1]: 'ACTIVATE', [c2]: 'INHIBIT' });
         const link1 = Math.random() > 0.5 ? 1 : -1;
-        const link2 = result === 'TRIGGER' ? link1 : -link1;
-        op1 = link1===1 ? c1 : c2; op2 = link2===1 ? c1 : c2;
+        const link2 = result === 'TRIGGER' ? link1 : -link1; // Double neg logic
+        op1 = link1===1 ? c1 : c2; 
+        op2 = link2===1 ? c1 : c2;
     }
 
     return {
         stim: {
-            type: 'FLUX_CAUSAL', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+            type: 'FLUX_CAUSAL', 
+            tier, 
+            dictionary: dict, 
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
             visuals: { nodes, nodeColors: colors, ops: [op1, op2], isReverse },
             textQuery: tier >= 3 ? `FINAL COLOR OF ${nodes[2]}?` : `NET EFFECT: ${nodes[0]} on ${nodes[2]}`,
             logicProof: tier >= 3 ? `Viral Mutation -> ${result}` : `Chain Logic -> ${result}`
@@ -412,37 +478,132 @@ const generateFluxCausal = (prevResult: string | null, forceMatch: boolean, tier
     };
 };
 
-// 6. FLUX SPATIAL
+// 6. FLUX SPATIAL 
 const generateFluxSpatial = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
-    // T1: Absolute (NE/NW). T2: Relative Turn. T3: Rotational Delta.
-    
-    let relations = [];
-    if (tier === 1) relations = ['NORTH_EAST', 'NORTH_WEST', 'SOUTH_EAST', 'SOUTH_WEST'];
-    else if (tier === 2) relations = ['NORTH_EAST', 'NORTH_WEST', 'SOUTH_EAST', 'SOUTH_WEST']; // T2 Relative still outputs Quadrants
-    else relations = ['NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP']; // T3 is Delta
+    // Determine Result Category based on Tier
+    let relations: string[] = [];
+    if (tier === 3) {
+        relations = ['NO_CHANGE', '90_RIGHT', '90_LEFT', '180_FLIP']; // Rotational Delta
+    } else {
+        relations = ['NORTH_EAST', 'NORTH_WEST', 'SOUTH_EAST', 'SOUTH_WEST']; // Quadrants (T1 & T2)
+    }
     
     let result = getRandomItem(relations);
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
     else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
 
-    // Codes
-    const codeN = generateCode([]); const codeS = generateCode([codeN]); const codeE = generateCode([codeN,codeS]); const codeW = generateCode([codeN,codeS,codeE]);
-    let dict = {};
+    // Generate Codes
+    const c1 = generateCode([]); 
+    const c2 = generateCode([c1]); 
+    const c3 = generateCode([c1, c2]); 
+    const c4 = generateCode([c1, c2, c3]);
+    
+    let dict: Record<string, string> = {};
     let moves: string[] = [];
 
     if (tier === 1) {
-        dict = shuffleEntries({ [codeN]: 'NORTH', [codeS]: 'SOUTH', [codeE]: 'EAST', [codeW]: 'WEST' });
-        if (result==='NORTH_EAST') moves=[codeN, codeE]; // etc...
-        else moves=[codeN, codeW]; // fallback
-    } else if (tier >= 2) {
-        // Relative moves
-        const codeFwd=codeN, codeR=codeS, codeL=codeE, codeU=codeW;
-        dict = shuffleEntries({ [codeFwd]: 'FORWARD', [codeR]: 'TURN_RIGHT', [codeL]: 'TURN_LEFT', [codeU]: 'U_TURN' });
-        // Sequence generation logic ... (Simulated turtle)
-        moves = [codeFwd, codeR, codeFwd]; // Placeholder for brevity
+        // --- TIER 1: ABSOLUTE MOVES (North/South/East/West) ---
+        dict = shuffleEntries({ [c1]: 'NORTH', [c2]: 'SOUTH', [c3]: 'EAST', [c4]: 'WEST' });
+        
+        // Reverse engineer the path (Simple summation)
+        if (result === 'NORTH_EAST') moves = [c1, c3]; // N + E
+        else if (result === 'NORTH_WEST') moves = [c1, c4]; // N + W
+        else if (result === 'SOUTH_EAST') moves = [c2, c3]; // S + E
+        else if (result === 'SOUTH_WEST') moves = [c2, c4]; // S + W
+        
+        moves = shuffleArray(moves); // Order doesn't matter for T1
+        
+    } else {
+        // --- TIER 2 & 3: RELATIVE MOVES (Turtle Graphics) ---
+        const codeFwd = c1, codeR = c2, codeL = c3, codeU = c4;
+        
+        dict = shuffleEntries({ 
+            [codeFwd]: 'FORWARD', 
+            [codeR]: 'TURN_RIGHT', 
+            [codeL]: 'TURN_LEFT', 
+            [codeU]: 'U_TURN' 
+        });
+
+        const ops = [codeFwd, codeR, codeL, codeU];
+        let validSequence: string[] = [];
+        let attempts = 0;
+        
+        // Brute force a valid sequence (Simulate the turtle)
+        while (validSequence.length === 0 && attempts < 200) {
+            attempts++;
+            // Generate random 3-step sequence
+            const seq = [getRandomItem(ops), getRandomItem(ops), getRandomItem(ops)];
+            
+            let x = 0, y = 0;
+            let heading = 0; // 0=N, 1=E, 2=S, 3=W
+            
+            for (const move of seq) {
+                if (move === codeR) heading = (heading + 1) % 4;
+                else if (move === codeL) heading = (heading + 3) % 4;
+                else if (move === codeU) heading = (heading + 2) % 4;
+                else if (move === codeFwd) {
+                    if (heading === 0) y++;      // North
+                    else if (heading === 1) x++; // East
+                    else if (heading === 2) y--; // South
+                    else if (heading === 3) x--; // West
+                }
+            }
+            
+            let outcome = '';
+            
+            if (tier === 2) {
+                // Tier 2: Check Quadrant
+                if (x > 0 && y > 0) outcome = 'NORTH_EAST';
+                else if (x < 0 && y > 0) outcome = 'NORTH_WEST';
+                else if (x > 0 && y < 0) outcome = 'SOUTH_EAST';
+                else if (x < 0 && y < 0) outcome = 'SOUTH_WEST';
+            } else {
+                // Tier 3: Check Heading Delta (Start was 0/North)
+                if (heading === 0) outcome = 'NO_CHANGE';
+                else if (heading === 1) outcome = '90_RIGHT';
+                else if (heading === 2) outcome = '180_FLIP';
+                else if (heading === 3) outcome = '90_LEFT';
+            }
+
+            if (outcome === result) {
+                validSequence = seq;
+            }
+        }
+        
+        // Safety Fallback (If random gen fails, which is rare but possible)
+        if (validSequence.length === 0) {
+            if (tier === 2) {
+                 // Simple relative paths to quadrants
+                 if (result === 'NORTH_EAST') validSequence = [codeFwd, codeR, codeFwd];
+                 else if (result === 'NORTH_WEST') validSequence = [codeFwd, codeL, codeFwd];
+                 else if (result === 'SOUTH_EAST') validSequence = [codeR, codeFwd, codeFwd]; // Face E, Move, Move
+                 else validSequence = [codeL, codeFwd, codeFwd]; // Face W, Move, Move (Wait, S/W requires turning)
+                 // Correction for South fallback: Turn U, Fwd, Turn...
+                 if (result === 'SOUTH_EAST') validSequence = [codeU, codeFwd, codeL, codeFwd]; 
+                 if (result === 'SOUTH_WEST') validSequence = [codeU, codeFwd, codeR, codeFwd];
+            } else {
+                 // Simple heading changes
+                 if (result === 'NO_CHANGE') validSequence = [codeR, codeL, codeFwd];
+                 else if (result === '90_RIGHT') validSequence = [codeFwd, codeR, codeFwd];
+                 else if (result === '90_LEFT') validSequence = [codeFwd, codeL, codeFwd];
+                 else validSequence = [codeR, codeR, codeFwd];
+            }
+        }
+        moves = validSequence;
     }
 
-    return { stim: { type: 'FLUX_SPATIAL', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { sequence: moves }, textQuery: tier>=3 ? 'NET HEADING CHANGE' : 'NET QUADRANT', logicProof: `Spatial Logic -> ${result}` }, result };
+    return {
+        stim: {
+            type: 'FLUX_SPATIAL',
+            tier,
+            dictionary: dict,
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT',
+            visuals: { sequence: moves },
+            textQuery: tier >= 3 ? 'NET HEADING CHANGE' : 'NET QUADRANT',
+            logicProof: `Simulation Path -> ${result}`
+        },
+        result
+    };
 };
 
 // 7. FLUX DEICTIC
@@ -749,53 +910,6 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
             </p>
           </div>
 
-          {/* --- NEW: ADAPTIVE INTENSITY TIERS --- */}
-          <div className="col-span-1 md:col-span-2 bg-slate-950 p-5 rounded-xl border border-slate-800">
-             <div className="text-purple-400 font-black text-lg mb-4 flex items-center gap-2">
-                 <Activity className="w-5 h-5" /> ADAPTIVE INTENSITY SYSTEM
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex flex-col gap-2">
-                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                       <strong className="text-white">TIER 1 (Novice)</strong>
-                       <span className="text-slate-500 font-mono">&lt; 1200 Elo</span>
-                   </div>
-                   <ul className="list-disc list-inside text-slate-400 space-y-1">
-                      <li>Linear Visuals (Left-to-Right)</li>
-                      <li>Simple Dictionaries (1:1)</li>
-                      <li>Static Buttons</li>
-                      <li>Absolute Spatial (NE/NW)</li>
-                   </ul>
-                </div>
-                
-                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex flex-col gap-2">
-                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                       <strong className="text-emerald-400">TIER 2 (Advanced)</strong>
-                       <span className="text-slate-500 font-mono">1200 - 1500</span>
-                   </div>
-                   <ul className="list-disc list-inside text-slate-400 space-y-1">
-                      <li>Scrambled Topology</li>
-                      <li>Context Colors Active</li>
-                      <li><strong className="text-white">Button Flipping</strong></li>
-                      <li>Relative Spatial (Turning)</li>
-                   </ul>
-                </div>
-
-                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex flex-col gap-2">
-                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                       <strong className="text-yellow-400">TIER 3 (Master)</strong>
-                       <span className="text-slate-500 font-mono">1500+</span>
-                   </div>
-                   <ul className="list-disc list-inside text-slate-400 space-y-1">
-                      <li>Polysemy (Synonyms)</li>
-                      <li>Viral Mutation (Causal)</li>
-                      <li>Rotational Delta (Spatial)</li>
-                      <li><strong className="text-red-400">Negation Curse</strong></li>
-                   </ul>
-                </div>
-             </div>
-          </div>
-
           {/* 1. Feature */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">1. FEATURE</div>
@@ -809,16 +923,18 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
             </p>
           </div>
 
-          {/* 2. COMPARISON */}
+          {/* 2. Comparison */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">2. COMPARISON</div>
             <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Pivot Scale</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Find the Hub. Combine the <strong>Symbol</strong> + <strong>Background Color</strong> to find the rule.
+              Find the Hub. Check the Symbol + Context (Color).
               <br/><br/>
-              <strong>Calculation:</strong> If Left &gt; Hub and Right &lt; Hub...
+              <strong>Tier 1-2:</strong> Distinct Symbols (Star vs Circle).
               <br/>
-              <strong>Result:</strong> <span className="text-white font-mono bg-black px-1 rounded">A {'>'} C</span> (GREATER).
+              <strong>Tier 3:</strong> Contextual (Same Symbol, Different Color).
+              <br/><br/>
+              <strong>Result:</strong> If A &gt; Hub and C &lt; Hub... <span className="text-white font-mono bg-black px-1 rounded">A &gt; C</span> (GREATER).
             </p>
           </div>
 
@@ -849,28 +965,26 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
           {/* 5. Causal */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">5. CAUSAL</div>
-            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Viral Mutation</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Flow & Mutation</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              <strong>The Rule:</strong> If the Virus succeeds, the destination <strong>FLIPS COLOR</strong>.
-              <br/>
-              <span className="text-white font-mono bg-black px-1 rounded">INFECT_MATCH</span>: Succeeds if colors are the same.
-              <br/>
-              <span className="text-white font-mono bg-black px-1 rounded">INFECT_DIFF</span>: Succeeds if colors differ.
+              <strong>Tier 1-2 (Gating):</strong> Gates block specific colors. If blocked, signal dies. (Result: TRIGGER or BLOCK).
               <br/><br/>
-              <strong>Calculation:</strong> You must update the color of the Middle Node before solving the Final Node.
+              <strong>Tier 3 (Viral):</strong> Gates <strong className="text-white">FLIP</strong> the color if successful.
+              <br/>
+              <em className="text-xs opacity-50">You must update the Middle Node's color before solving Link 2.</em>
             </p>
           </div>
 
           {/* 6. Spatial */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">6. SPATIAL</div>
-            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Relative Heading</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">Navigation</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              You are a compass needle starting <strong>NORTH</strong>. Codes are relative turns.
+              You start at (0,0) facing <strong>NORTH</strong>.
               <br/><br/>
-              <strong>Calculation:</strong> Track your rotation state.
+              <strong>Tier 1-2:</strong> Absolute Moves (North/South). Sum the vector.
               <br/>
-              Start(N) + Turn Right(90) + Turn Right(90) = <span className="text-white font-mono bg-black px-1 rounded">180_FLIP</span> (South).
+              <strong>Tier 3:</strong> Relative Turns (Left/Right). Track your heading state.
             </p>
           </div>
 
@@ -900,11 +1014,7 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
               <br/><br/>
               <strong>1. Filter:</strong> Use the Shape to grab the value (Ink or Text).
               <br/>
-              <strong>2. Modify:</strong> Apply the Code.
-              <br/>
-              <span className="text-white font-mono bg-black px-1 rounded">KEEP</span>: Stays the same.
-              <br/>
-              <span className="text-white font-mono bg-black px-1 rounded">INVERT</span>: Swaps Red ↔ Blue.
+              <strong>2. Modify:</strong> Apply the Code (Keep or Invert).
             </p>
           </div>
 
