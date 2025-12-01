@@ -509,27 +509,49 @@ const generateFluxConditional = (prevResult: string | null, forceMatch: boolean,
     };
 };
 
+// 9. FLUX ANALOGY 
 const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
     const relations = ['ANALOGOUS', 'NON_ANALOGOUS']; 
     let result = getRandomItem(relations);
     if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; 
     else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
     
-    const c1 = generateCode([]); const c2 = generateCode([c1]); 
-    const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
+    // 1. Generate 4 Unique Codes
+    const c1 = generateCode([]); 
+    const c2 = generateCode([c1]); 
+    const c3 = generateCode([c1, c2]); 
+    const c4 = generateCode([c1, c2, c3]);
     
+    // 2. Map Meanings (2 Causes, 2 Prevents)
     const dict = shuffleEntries({ [c1]: 'CAUSES', [c2]: 'CAUSES', [c3]: 'PREVENTS', [c4]: 'PREVENTS' });
     
+    const causesPool = [c1, c2];
+    const preventsPool = [c3, c4];
+
+    // 3. Determine Relationships
     const rel1 = Math.random() > 0.5 ? 'CAUSES' : 'PREVENTS'; 
-    let rel2 = result === 'ANALOGOUS' ? rel1 : (rel1 === 'CAUSES' ? 'PREVENTS' : 'CAUSES');
     
-    const sym1 = rel1 === 'CAUSES' ? (Math.random() > 0.5 ? c1 : c2) : (Math.random() > 0.5 ? c3 : c4);
-    const sym2 = rel2 === 'CAUSES' ? (Math.random() > 0.5 ? c1 : c2) : (Math.random() > 0.5 ? c3 : c4);
+    let rel2 = '';
+    if (result === 'ANALOGOUS') rel2 = rel1;
+    else rel2 = rel1 === 'CAUSES' ? 'PREVENTS' : 'CAUSES';
+
+    // 4. Select Symbols (CRITICAL FIX: Force Distinctness)
+    const getPool = (r: string) => r === 'CAUSES' ? causesPool : preventsPool;
+
+    const sym1 = getRandomItem(getPool(rel1));
     
+    // Get the pool for the second relation
+    const pool2 = getPool(rel2);
+    
+    // Filter sym1 out of pool2. 
+    // If rel1 == rel2 (Analogous), this prevents using the same symbol twice.
+    // If rel1 != rel2 (Non-Analogous), the pools are different anyway, so filter does nothing.
+    const sym2 = getRandomItem(pool2.filter(s => s !== sym1));
+
     return { 
         stim: { 
             type: 'FLUX_ANALOGY', 
-            tier, // <--- ADDED THIS
+            tier, 
             dictionary: dict, 
             dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
             visuals: { 
@@ -537,10 +559,10 @@ const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean, tie
                 net2: { left: 'X', op: sym2, right: 'Y' } 
             }, 
             textQuery: 'RELATION MATCH?', 
-            logicProof: `${rel1} vs ${rel2} = ${result}` 
+            logicProof: `${rel1} (${sym1}) vs ${rel2} (${sym2}) = ${result}` 
         }, 
         result 
-    };
+    }
 };
 
 // --- Helpers ---
