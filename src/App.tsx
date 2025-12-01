@@ -295,41 +295,90 @@ const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean, 
 
 // 4. FLUX HIERARCHY
 const generateFluxHierarchy = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
-    const relations = ['HIGHER', 'LOWER', 'SAME']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+    const relations = ['HIGHER', 'LOWER', 'SAME']; 
+    let result = getRandomItem(relations);
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; 
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
     
-    // T3: Polysemy. T1/T2: Single.
-    const c1 = getRandomItem(ICONS); const c2 = getRandomItem(ICONS.filter(i => i !== c1)); 
+    // 1. SETUP ICONS & DICTIONARY
+    const c1 = getRandomItem(ICONS); 
+    const c2 = getRandomItem(ICONS.filter(i => i !== c1)); 
+    const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); 
+    const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
+    
     let dict: Record<string, string> = {};
-    
+    let parentIcons: string[] = [];
+    let childIcons: string[] = [];
+
     if (tier >= 3) {
-        const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i)));
-        dict = shuffleEntries({ [c1]: 'PARENT_OF', [c2]: 'PARENT_OF', [c3]: 'CHILD_OF', [c4]: 'CHILD_OF' });
+        // T3: Polysemy (2 codes for Parent, 2 for Child)
+        dict = shuffleEntries({ 
+            [c1]: 'PARENT_OF', [c2]: 'PARENT_OF', 
+            [c3]: 'CHILD_OF', [c4]: 'CHILD_OF' 
+        });
+        parentIcons = [c1, c2];
+        childIcons = [c3, c4];
     } else {
+        // T1/T2: Simple (1 code each)
         dict = shuffleEntries({ [c1]: 'PARENT_OF', [c2]: 'CHILD_OF' });
+        parentIcons = [c1];
+        childIcons = [c2];
     }
 
     const pool = tier === 1 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L', 'Q', 'R', 'S']; 
     const nodes = shuffleArray(pool).slice(0, 3); 
     
-    const isReverseQuery = tier >= 2 && Math.random() > 0.5; // T1 always Left vs Right
+    const isReverseQuery = tier >= 2 && Math.random() > 0.5;
     let requiredVisual = result;
-    if (isReverseQuery) { if (result === 'HIGHER') requiredVisual = 'LOWER'; else if (result === 'LOWER') requiredVisual = 'HIGHER'; }
+    if (isReverseQuery) { 
+        if (result === 'HIGHER') requiredVisual = 'LOWER'; 
+        else if (result === 'LOWER') requiredVisual = 'HIGHER'; 
+    }
     
-    let link1Type = 0; let link2Type = 0; 
-    if (requiredVisual === 'HIGHER') { link1Type = 1; link2Type = 1; } else if (requiredVisual === 'LOWER') { link1Type = -1; link2Type = -1; } else { if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } else { link1Type = 1; link2Type = -1; } }
+    let link1Type = 0; 
+    let link2Type = 0; 
+    if (requiredVisual === 'HIGHER') { link1Type = 1; link2Type = 1; } 
+    else if (requiredVisual === 'LOWER') { link1Type = -1; link2Type = -1; } 
+    else { 
+        if (Math.random() > 0.5) { link1Type = -1; link2Type = 1; } 
+        else { link1Type = 1; link2Type = -1; } 
+    }
     
-    // Select Icons
-    const getParentIcon = () => tier >= 3 ? getRandomItem(Object.keys(dict).filter(k=>dict[k]==='PARENT_OF')) : c1;
-    const getChildIcon = () => tier >= 3 ? getRandomItem(Object.keys(dict).filter(k=>dict[k]==='CHILD_OF')) : c2;
+    // 2. SELECT ICONS (CRITICAL FIX: Ensure Distinctness)
+    
+    // Pick First Icon
+    const pool1 = link1Type === 1 ? parentIcons : childIcons;
+    const iconAB = getRandomItem(pool1);
 
-    const iconAB = link1Type === 1 ? getParentIcon() : getChildIcon();
-    const iconBC = link2Type === 1 ? getParentIcon() : getChildIcon(); // (Polysemy logic simplifed here for brevity)
+    // Pick Second Icon
+    const pool2 = link2Type === 1 ? parentIcons : childIcons;
+    
+    // FILTER: Remove the icon used in Link 1 from the available options for Link 2.
+    // In Tier 3, this forces the use of the synonym (e.g. if c1 used, force c2).
+    // In Tier 1/2, the pool only has 1 item, so filtering would empty it. We check length.
+    let availableForBC = pool2.filter(i => i !== iconAB);
+    
+    // If filtering emptied the pool (Tier 1/2), put the item back.
+    if (availableForBC.length === 0) availableForBC = pool2;
+    
+    const iconBC = getRandomItem(availableForBC);
 
     const queryText = isReverseQuery ? `GENERATION: ${nodes[2]} vs ${nodes[0]}` : `GENERATION: ${nodes[0]} vs ${nodes[2]}`;
     const visualNet = link1Type + link2Type;
     const proofString = isReverseQuery ? `Visual(${visualNet}) * Flip = ${result}` : `Net: ${visualNet} = ${result}`;
-    return { stim: { type: 'FLUX_HIERARCHY', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, textQuery: queryText, logicProof: proofString }, result };
+    
+    return { 
+        stim: { 
+            type: 'FLUX_HIERARCHY', 
+            tier, 
+            dictionary: dict, 
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
+            visuals: { nodes, linkAB: iconAB, linkBC: iconBC }, 
+            textQuery: queryText, 
+            logicProof: proofString 
+        }, 
+        result 
+    };
 };
 
 // 5. FLUX CAUSAL
