@@ -890,7 +890,7 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
   );
 };
 
-// --- NEW COMPONENT: Tutorial Modal ---
+// --- Tutorial Modal ---
 const TutorialModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -921,6 +921,53 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
               Never match the pictures. Never match the words.<br/>
               <strong className="text-white">Match the Hidden Result.</strong>
             </p>
+          </div>
+
+          {/* --- RESTORED: ADAPTIVE INTENSITY TIERS --- */}
+          <div className="col-span-1 md:col-span-2 bg-slate-950 p-5 rounded-xl border border-slate-800">
+             <div className="text-purple-400 font-black text-lg mb-4 flex items-center gap-2">
+                 <Activity className="w-5 h-5" /> ADAPTIVE INTENSITY SYSTEM
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex flex-col gap-2">
+                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                       <strong className="text-white">TIER 1 (Novice)</strong>
+                       <span className="text-slate-500 font-mono">&lt; 1200 Elo</span>
+                   </div>
+                   <ul className="list-disc list-inside text-slate-400 space-y-1">
+                      <li>Linear Visuals (Left-to-Right)</li>
+                      <li>Simple Dictionaries (1:1)</li>
+                      <li>Static Buttons</li>
+                      <li>Absolute Spatial (NE/NW)</li>
+                   </ul>
+                </div>
+                
+                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex flex-col gap-2">
+                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                       <strong className="text-emerald-400">TIER 2 (Advanced)</strong>
+                       <span className="text-slate-500 font-mono">1200 - 1500</span>
+                   </div>
+                   <ul className="list-disc list-inside text-slate-400 space-y-1">
+                      <li>Scrambled Topology</li>
+                      <li>Context Colors Active</li>
+                      <li><strong className="text-white">Button Flipping</strong></li>
+                      <li>Relative Spatial (Turning)</li>
+                   </ul>
+                </div>
+
+                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 flex flex-col gap-2">
+                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                       <strong className="text-yellow-400">TIER 3 (Master)</strong>
+                       <span className="text-slate-500 font-mono">1500+</span>
+                   </div>
+                   <ul className="list-disc list-inside text-slate-400 space-y-1">
+                      <li>Polysemy (Synonyms)</li>
+                      <li>Viral Mutation (Causal)</li>
+                      <li>Rotational Delta (Spatial)</li>
+                      <li><strong className="text-red-400">Negation Curse</strong></li>
+                   </ul>
+                </div>
+             </div>
           </div>
 
           {/* 1. Feature */}
