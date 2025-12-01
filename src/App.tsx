@@ -247,50 +247,102 @@ const generateFluxComparison = (prevResult: string | null, forceMatch: boolean, 
 
 // 3. FLUX OPPOSITION
 const generateFluxOpposition = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
-  const relations = ['SAME', 'OPPOSITE', 'DIFFERENT']; let result = getRandomItem(relations);
+  const relations = ['SAME', 'OPPOSITE', 'DIFFERENT']; 
+  let result = getRandomItem(relations);
+  
   if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
   else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-  
-  // T1: Fixed A-B-C. T2+: Scrambled.
+
+  // 1. Randomize Nodes
   const pool = tier === 1 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'X', 'Y', 'Z', 'J', 'K', 'L']; 
-  const nodes = shuffleArray(pool).slice(0, 3); const n1 = nodes[0]; const n2 = nodes[1]; const n3 = nodes[2];
-  
-  // T3: Polysemy. T1/T2: 1 Code per Rule.
-  const c1 = getRandomItem(ICONS); const c2 = getRandomItem(ICONS.filter(i => i !== c1)); 
+  const nodes = shuffleArray(pool).slice(0, 3); 
+  const n1 = nodes[0]; const n2 = nodes[1]; const n3 = nodes[2];
+
+  // 2. Generate Icons & Dictionary
+  const c1 = getRandomItem(ICONS); 
+  const c2 = getRandomItem(ICONS.filter(i => i !== c1)); 
   let dict: Record<string, string> = {};
   
+  // Store pools for selection
+  let sameIcons: string[] = [];
+  let oppIcons: string[] = [];
+  let neutralIcons: string[] = [];
+
   if (tier >= 3) {
-      const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i))); const cNeutral = getRandomItem(ICONS.filter(i => ![c1, c2, c3, c4].includes(i)));
-      dict = shuffleEntries({ [c1]: 'IDENTICAL', [c2]: 'IDENTICAL', [c3]: 'INVERT', [c4]: 'INVERT', [cNeutral]: 'NEUTRAL' });
+      // T3: Polysemy (2 Identical, 2 Invert, 1 Neutral)
+      const c3 = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i))); 
+      const c4 = getRandomItem(ICONS.filter(i => ![c1, c2, c3].includes(i))); 
+      const cNeutral = getRandomItem(ICONS.filter(i => ![c1, c2, c3, c4].includes(i)));
+      
+      dict = shuffleEntries({ 
+          [c1]: 'IDENTICAL', [c2]: 'IDENTICAL', 
+          [c3]: 'INVERT', [c4]: 'INVERT', 
+          [cNeutral]: 'NEUTRAL' 
+      });
+      
+      sameIcons = [c1, c2];
+      oppIcons = [c3, c4];
+      neutralIcons = [cNeutral];
   } else {
+      // T1/T2: Single code per rule
       const cNeutral = getRandomItem(ICONS.filter(i => ![c1, c2].includes(i)));
       dict = shuffleEntries({ [c1]: 'IDENTICAL', [c2]: 'INVERT', [cNeutral]: 'NEUTRAL' });
+      sameIcons = [c1];
+      oppIcons = [c2];
+      neutralIcons = [cNeutral];
   }
 
-  // Logic Calc (Same as before)
+  // 3. Determine Logic Links
   let link1Type = 'SAME', link2Type = 'SAME';
-  if (result === 'DIFFERENT') { if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } } 
-  else if (result === 'SAME') { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type; } 
-  else { link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME'; }
+  if (result === 'DIFFERENT') { 
+      if (Math.random() > 0.5) { link1Type = 'NEUTRAL'; link2Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } 
+      else { link2Type = 'NEUTRAL'; link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; } 
+  } else if (result === 'SAME') { 
+      link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; 
+      link2Type = link1Type; 
+  } else { 
+      link1Type = Math.random() > 0.5 ? 'SAME' : 'OPP'; 
+      link2Type = link1Type === 'SAME' ? 'OPP' : 'SAME'; 
+  }
 
-  // Select Icons
-  const getIcon = (type: string) => {
-      if (type === 'NEUTRAL') return Object.keys(dict).find(k=>dict[k]==='NEUTRAL');
-      if (type === 'SAME') {
-          if (tier >= 3) return getRandomItem([c1, c2]); // Polysemy
-          return Object.keys(dict).find(k=>dict[k]==='IDENTICAL');
-      }
-      if (tier >= 3) return getRandomItem(Object.keys(dict).filter(k=>dict[k]==='INVERT'));
-      return Object.keys(dict).find(k=>dict[k]==='INVERT');
+  // 4. Select Icons (CRITICAL FIX: Ensure Distinctness)
+  const getPool = (type: string) => {
+      if (type === 'NEUTRAL') return neutralIcons;
+      if (type === 'SAME') return sameIcons;
+      return oppIcons;
   };
 
-  const icon1 = getIcon(link1Type); 
-  const icon2 = getIcon(link2Type); 
+  // Pick First Icon
+  const icon1 = getRandomItem(getPool(link1Type));
   
-  const isSwapped = tier >= 2 && Math.random() > 0.5; // T1 Linear, T2+ Scrambled
-  const visualChain = isSwapped ? [ { l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 } ] : [ { l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 } ];
+  // Pick Second Icon
+  // Filter out icon1 from the pool available for link 2.
+  // In T3, this forces use of the synonym. In T1/T2, pool size is 1, so filtering empties it.
+  let pool2 = getPool(link2Type).filter(i => i !== icon1);
   
-  return { stim: { type: 'FLUX_OPPOSITION', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { chain: visualChain }, textQuery: `DERIVE: ${n1} vs ${n3}`, logicProof: `${link1Type} + ${link2Type} = ${result}` }, result };
+  // Fallback for T1/T2 or Neutral (where pool size is 1): If empty, reuse the icon.
+  if (pool2.length === 0) pool2 = getPool(link2Type);
+  
+  const icon2 = getRandomItem(pool2);
+
+  // Visual Scramble
+  const isSwapped = tier >= 2 && Math.random() > 0.5; 
+  const visualChain = isSwapped 
+      ? [ { l: n3, icon: icon2, r: n2 }, { l: n2, icon: icon1, r: n1 } ] 
+      : [ { l: n1, icon: icon1, r: n2 }, { l: n2, icon: icon2, r: n3 } ];
+  
+  return { 
+      stim: { 
+          type: 'FLUX_OPPOSITION', 
+          tier, 
+          dictionary: dict, 
+          dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
+          visuals: { chain: visualChain }, 
+          textQuery: `DERIVE: ${n1} vs ${n3}`, 
+          logicProof: `${link1Type} + ${link2Type} = ${result}` 
+      }, 
+      result 
+  };
 };
 
 // 4. FLUX HIERARCHY
