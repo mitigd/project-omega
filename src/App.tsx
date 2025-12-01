@@ -474,29 +474,73 @@ const generateFluxDeictic = (prevResult: string | null, forceMatch: boolean, tie
 };
 
 // 8. CONDITIONAL & 9. ANALOGY (Always High Elo, so effectively Tier 3 logic always)
-const generateFluxConditional = (prevResult: string | null, forceMatch: boolean, tier: number) => {
-    const relations = ['RED', 'BLUE']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const wordText = Math.random() > 0.5 ? 'RED' : 'BLUE'; const inkColor = Math.random() > 0.5 ? 'RED' : 'BLUE'; 
+const generateFluxConditional = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
+    const relations = ['RED', 'BLUE']; 
+    let result = getRandomItem(relations);
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; 
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+    
+    const wordText = Math.random() > 0.5 ? 'RED' : 'BLUE'; 
+    const inkColor = Math.random() > 0.5 ? 'RED' : 'BLUE'; 
     const shape = Math.random() > 0.5 ? 'CIRCLE' : 'SQUARE';
-    const codeKeep = generateCode([]); const codeInvert = generateCode([codeKeep]);
-    const mapCircle = Math.random() > 0.5 ? 'READ_TEXT' : 'READ_INK'; const mapSquare = mapCircle === 'READ_TEXT' ? 'READ_INK' : 'READ_TEXT';
+    
+    const codeKeep = generateCode([]); 
+    const codeInvert = generateCode([codeKeep]);
+    const mapCircle = Math.random() > 0.5 ? 'READ_TEXT' : 'READ_INK'; 
+    const mapSquare = mapCircle === 'READ_TEXT' ? 'READ_INK' : 'READ_TEXT';
+    
     const dict = shuffleEntries({ [codeKeep]: 'KEEP_VALUE', [codeInvert]: 'INVERT_VALUE', ['(CIRCLE)']: mapCircle, ['(SQUARE)']: mapSquare });
-    const rule = shape === 'CIRCLE' ? mapCircle : mapSquare; const baseValue = rule === 'READ_TEXT' ? wordText : inkColor;
+    
+    const rule = shape === 'CIRCLE' ? mapCircle : mapSquare; 
+    const baseValue = rule === 'READ_TEXT' ? wordText : inkColor;
     let chosenCode = baseValue === result ? codeKeep : codeInvert;
-    return { stim: { type: 'FLUX_CONDITIONAL', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { wordText, inkColor, shape, modifier: chosenCode }, textQuery: 'DETERMINE FINAL COLOR', logicProof: `(${shape}=${rule} -> ${baseValue}) + ${chosenCode} = ${result}` }, result };
+    
+    return { 
+        stim: { 
+            type: 'FLUX_CONDITIONAL', 
+            tier, // <--- ADDED THIS
+            dictionary: dict, 
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
+            visuals: { wordText, inkColor, shape, modifier: chosenCode }, 
+            textQuery: 'DETERMINE FINAL COLOR', 
+            logicProof: `(${shape}=${rule} -> ${baseValue}) + ${chosenCode} = ${result}` 
+        }, 
+        result 
+    };
 };
 
-const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean, tier: number) => {
-    // ... Logic same as before
-    const relations = ['ANALOGOUS', 'NON_ANALOGOUS']; let result = getRandomItem(relations);
-    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-    const c1 = generateCode([]); const c2 = generateCode([c1]); const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
+const generateFluxAnalogy = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
+    const relations = ['ANALOGOUS', 'NON_ANALOGOUS']; 
+    let result = getRandomItem(relations);
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult; 
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+    
+    const c1 = generateCode([]); const c2 = generateCode([c1]); 
+    const c3 = generateCode([c1, c2]); const c4 = generateCode([c1, c2, c3]);
+    
     const dict = shuffleEntries({ [c1]: 'CAUSES', [c2]: 'CAUSES', [c3]: 'PREVENTS', [c4]: 'PREVENTS' });
-    const rel1 = Math.random() > 0.5 ? 'CAUSES' : 'PREVENTS'; let rel2 = result === 'ANALOGOUS' ? rel1 : (rel1 === 'CAUSES' ? 'PREVENTS' : 'CAUSES');
-    const sym1 = rel1 === 'CAUSES' ? (Math.random()>0.5?c1:c2) : (Math.random()>0.5?c3:c4);
-    const sym2 = rel2 === 'CAUSES' ? (Math.random()>0.5?c1:c2) : (Math.random()>0.5?c3:c4);
-    return { stim: { type: 'FLUX_ANALOGY', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', visuals: { net1: { left: 'A', op: sym1, right: 'B' }, net2: { left: 'X', op: sym2, right: 'Y' } }, textQuery: 'RELATION MATCH?', logicProof: `${rel1} vs ${rel2} = ${result}` }, result }
+    
+    const rel1 = Math.random() > 0.5 ? 'CAUSES' : 'PREVENTS'; 
+    let rel2 = result === 'ANALOGOUS' ? rel1 : (rel1 === 'CAUSES' ? 'PREVENTS' : 'CAUSES');
+    
+    const sym1 = rel1 === 'CAUSES' ? (Math.random() > 0.5 ? c1 : c2) : (Math.random() > 0.5 ? c3 : c4);
+    const sym2 = rel2 === 'CAUSES' ? (Math.random() > 0.5 ? c1 : c2) : (Math.random() > 0.5 ? c3 : c4);
+    
+    return { 
+        stim: { 
+            type: 'FLUX_ANALOGY', 
+            tier, // <--- ADDED THIS
+            dictionary: dict, 
+            dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
+            visuals: { 
+                net1: { left: 'A', op: sym1, right: 'B' }, 
+                net2: { left: 'X', op: sym2, right: 'Y' } 
+            }, 
+            textQuery: 'RELATION MATCH?', 
+            logicProof: `${rel1} vs ${rel2} = ${result}` 
+        }, 
+        result 
+    };
 };
 
 // --- Helpers ---
