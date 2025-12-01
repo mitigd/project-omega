@@ -1115,60 +1115,74 @@ export default function ProjectOmegaUltimate() {
 
   const nextTurn = useCallback(() => {
     const n = config.nBackLevel;
-    const histLen = history.length;
-    if (histLen < n && phase !== 'WARMUP' && !isRepairMode) setPhase('WARMUP');
-    if (histLen >= n && phase !== 'PLAYING' && !isRepairMode) setPhase('PLAYING');
+    
+    // We capture the length BEFORE we potentially reset it, 
+    // but we need to check if we are about to reset.
+    let isBlockSwitch = false;
 
-    const tier = getTier(activeElo);
-    // Button Flipping is a Tier 2+ mechanic
-    setIsButtonsFlipped(tier >= 2 && Math.random() > 0.5);
-
+    // If we are in a "Repair" loop or Single Practice, we are stable. 
+    // If Mixed Mode, we might switch.
+    
     let type: GeneratorType = 'FLUX_FEATURE';
     
     if (isRepairMode && repairTargetType) {
         type = repairTargetType;
     } else if (config.isPracticeMode && config.practiceType && config.practiceType !== 'MIXED') {
-        // Practice specific frame
-        type = config.practiceType; 
+        type = config.practiceType;
     } else {
-        // --- BLOCK SCHEDULING LOGIC ---
-        // If we have run out of turns in the current block, pick a new type
+        // --- BLOCK SCHEDULING ---
         if (blockState.current.remaining <= 0) {
+            // Time to switch blocks?
             const allTypes: GeneratorType[] = [
                 'FLUX_FEATURE', 'FLUX_COMPARISON', 'FLUX_OPPOSITION',
                 'FLUX_HIERARCHY', 'FLUX_CAUSAL', 'FLUX_SPATIAL',
                 'FLUX_DEICTIC', 'FLUX_CONDITIONAL', 'FLUX_ANALOGY'
             ];
             
-            // Pick a new type (ensure it's different to force a switch)
             let newType = getRandomItem(allTypes);
+            // Ensure we actually switch types to force the adaptation
             while (newType === blockState.current.type && allTypes.length > 1) {
                 newType = getRandomItem(allTypes);
             }
             
             blockState.current.type = newType;
             
-            // DYNAMIC BLOCK LENGTH
-            // Formula: (N-Back Level * 3) + Random(3 to 8)
-            // Example N=1: 3 + (3~8) = 6~11 turns
-            // Example N=2: 6 + (3~8) = 9~14 turns
-            // Example N=3: 9 + (3~8) = 12~17 turns
-            // This guarantees enough runway to fill the buffer and play a solid streak.
+            // Calculate Runway: (N * 3) + Random Buffer
+            // This ensures they get a solid streak after the warmup
             const baseRunway = n * 3;
             const variance = Math.floor(Math.random() * 6) + 3;
             blockState.current.remaining = baseRunway + variance;
+            
+            // FLAG THE SWITCH
+            isBlockSwitch = true;
         }
-        
         type = blockState.current.type;
         blockState.current.remaining--;
     }
+    
+    // --- HANDLE PHASE TRANSITIONS ---
+    // If we just switched blocks, FORCE WARMUP.
+    // Otherwise, check standard N-Back depth.
+    if (isBlockSwitch && !isRepairMode) {
+        setPhase('WARMUP');
+    } else if (!isRepairMode) {
+        // Standard check: If history is full enough, we are playing.
+        // Note: We use 'history.length + 1' logic effectively below when setting state
+        const currentHistoryLength = isBlockSwitch ? 0 : history.length;
+        if (currentHistoryLength < n) setPhase('WARMUP');
+        else setPhase('PLAYING');
+    }
 
+    const tier = getTier(activeElo);
+    setIsButtonsFlipped(tier >= 2 && Math.random() > 0.5);
+
+    // --- GENERATE STIMULUS ---
+    // If Block Switch, we pass NULL for prevResult because the old history is dead logic.
     const shouldMatch = Math.random() > 0.5;
-    const prevNItem = (!isRepairMode && histLen >= n) ? history[histLen - n] : null;
+    const prevNItem = (!isBlockSwitch && !isRepairMode && history.length >= n) ? history[history.length - n] : null;
     const prevResult = prevNItem ? prevNItem.result : null;
 
     let turnData;
-    // Pass 'tier' to generators
     switch(type) {
       case 'FLUX_FEATURE': turnData = generateFluxFeature(prevResult, shouldMatch, tier); break;
       case 'FLUX_COMPARISON': turnData = generateFluxComparison(prevResult, shouldMatch, tier); break;
@@ -1182,23 +1196,20 @@ export default function ProjectOmegaUltimate() {
       default: turnData = generateFluxFeature(prevResult, shouldMatch, tier);
     }
 
-    // --- APPLY META MODIFIERS (Negation) ---
-    // Pass tier to check if Negation is allowed (T3 only)
     if (!isRepairMode) { 
         turnData = applyMetaModifiers(turnData, tier);
     }
 
     const newItem: HistoryItem = { result: turnData.result, stimulus: turnData.stim };
     
-    // REPAIR MODE LOGIC
+    // Repair Mode Target Logic (Unchanged)
     if (isRepairMode) {
         const makeMatch = Math.random() > 0.5;
-        if (makeMatch) {
-            setRepairTargetResult(newItem.result);
-        } else {
-            let possible: string[] = [];
-            // Basic fallback list for distractors
-            switch(type) {
+        if (makeMatch) setRepairTargetResult(newItem.result);
+        else {
+             // ... (Distractor Logic same as previous) ...
+             let possible: string[] = [];
+             switch(type) {
                 case 'FLUX_FEATURE': possible = ['MATCH_COLOR', 'MATCH_SHAPE', 'EXACT', 'NONE']; break;
                 case 'FLUX_COMPARISON': possible = ['GREATER', 'LESSER']; break;
                 case 'FLUX_OPPOSITION': possible = ['SAME', 'OPPOSITE', 'DIFFERENT']; break;
@@ -1216,7 +1227,16 @@ export default function ProjectOmegaUltimate() {
     }
 
     setCurrentItem(newItem);
-    setHistory(prev => [...prev, newItem]);
+
+    // --- HISTORY UPDATE ---
+    // If we switched blocks, we RESET history to just this new item.
+    // Otherwise, we append.
+    if (isBlockSwitch && !isRepairMode) {
+        setHistory([newItem]); // Wipe and start fresh
+    } else {
+        setHistory(prev => [...prev, newItem]);
+    }
+    
     setTurnCount(c => c + 1);
     
     if (config.baseTimer === -1) { setTimer(100); } 
@@ -1227,7 +1247,9 @@ export default function ProjectOmegaUltimate() {
       const totalTime = Math.max(3, config.baseTimer + extraTime - (difficultyMod * 2));
       setTimer(totalTime);
     }
+    
     startTimeRef.current = Date.now();
+
   }, [activeElo, history, config, phase, isRepairMode, repairTargetType]);
 
   const handleAnswer = useCallback((userMatch: boolean, isTimeout = false) => {
@@ -1335,6 +1357,13 @@ export default function ProjectOmegaUltimate() {
       {/* REPAIR MODE BANNER */}
       {isRepairMode && (<div className="absolute top-16 left-0 w-full bg-red-900/90 text-white text-center py-1 text-xs font-bold uppercase tracking-widest z-50 animate-pulse border-y border-red-500"><Wrench className="w-3 h-3 inline mr-2"/> JAMMED GUN PROTOCOL: REPAIRING {repairTargetType?.replace('FLUX_', '')} ({repairSuccesses}/3)</div>)}
       
+      {/* WARMUP BANNER */}
+      {phase === 'WARMUP' && !isRepairMode && (
+          <div className="absolute top-16 left-0 w-full bg-blue-900/90 text-white text-center py-1 text-xs font-bold uppercase tracking-widest z-50 border-y border-blue-500 animate-pulse">
+              NEW SYSTEM DETECTED: CALIBRATING N-{config.nBackLevel} BUFFER...
+          </div>
+      )}
+
       {/* Settings & Tutorial Modals */}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
       {showSettings && (
