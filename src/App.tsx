@@ -1252,6 +1252,7 @@ export default function ProjectOmegaUltimate() {
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const startTimeRef = useRef(0);
   const [tempConfig, setTempConfig] = useState<GameConfig>(config);
+  const frameQueue = useRef<GeneratorType[]>([]);
 
   const updateElo = (isCorrect: boolean) => {
     if (isRepairMode) return;
@@ -1261,16 +1262,11 @@ export default function ProjectOmegaUltimate() {
     if (!config.isPracticeMode) setRealElo(p => Math.max(0, p + diff));
   };
 
-  const nextTurn = useCallback(() => {
+const nextTurn = useCallback(() => {
     const n = config.nBackLevel;
-    
-    // We capture the length BEFORE we potentially reset it, 
-    // but we need to check if we are about to reset.
-    let isBlockSwitch = false;
+    const histLen = history.length;
 
-    // If we are in a "Repair" loop or Single Practice, we are stable. 
-    // If Mixed Mode, we might switch.
-    
+    let isBlockSwitch = false;
     let type: GeneratorType = 'FLUX_FEATURE';
     
     if (isRepairMode && repairTargetType) {
@@ -1278,46 +1274,54 @@ export default function ProjectOmegaUltimate() {
     } else if (config.isPracticeMode && config.practiceType && config.practiceType !== 'MIXED') {
         type = config.practiceType;
     } else {
-        // --- BLOCK SCHEDULING ---
+        // --- BLOCK SCHEDULING WITH BAG SYSTEM ---
         if (blockState.current.remaining <= 0) {
-            // Time to switch blocks?
-            const allTypes: GeneratorType[] = [
-                'FLUX_FEATURE', 'FLUX_COMPARISON', 'FLUX_OPPOSITION',
-                'FLUX_HIERARCHY', 'FLUX_CAUSAL', 'FLUX_SPATIAL',
-                'FLUX_DEICTIC', 'FLUX_CONDITIONAL', 'FLUX_ANALOGY'
-            ];
             
-            let newType = getRandomItem(allTypes);
-            // Ensure we actually switch types to force the adaptation
-            while (newType === blockState.current.type && allTypes.length > 1) {
-                newType = getRandomItem(allTypes);
+            // 1. REFILL THE BAG IF EMPTY
+            if (frameQueue.current.length === 0) {
+                const allTypes: GeneratorType[] = [
+                    'FLUX_FEATURE', 'FLUX_COMPARISON', 'FLUX_OPPOSITION',
+                    'FLUX_HIERARCHY', 'FLUX_CAUSAL', 'FLUX_SPATIAL',
+                    'FLUX_DEICTIC', 'FLUX_CONDITIONAL', 'FLUX_ANALOGY'
+                ];
+                frameQueue.current = shuffleArray(allTypes);
+
+                // 2. ANTI-REPEAT CHECK (Across Deck Resets)
+                // If the new top card is the same as the last played block, swap it to the bottom.
+                if (frameQueue.current[0] === blockState.current.type) {
+                    const first = frameQueue.current.shift();
+                    if (first) frameQueue.current.push(first);
+                }
             }
+
+            // 3. DRAW NEXT CARD
+            const newType = frameQueue.current.shift();
             
-            blockState.current.type = newType;
-            
-            // Calculate Runway: (N * 3) + Random Buffer
-            // This ensures they get a solid streak after the warmup
-            const baseRunway = n * 3;
-            const variance = Math.floor(Math.random() * 6) + 3;
-            blockState.current.remaining = baseRunway + variance;
-            
-            // FLAG THE SWITCH
-            isBlockSwitch = true;
+            if (newType) {
+                blockState.current.type = newType;
+                
+                // DYNAMIC BLOCK LENGTH
+                // Formula: (N-Back Level * 3) + Random(3 to 8)
+                const baseRunway = n * 3;
+                const variance = Math.floor(Math.random() * 6) + 3;
+                blockState.current.remaining = baseRunway + variance;
+                
+                isBlockSwitch = true;
+            }
         }
+        
         type = blockState.current.type;
         blockState.current.remaining--;
     }
     
     // --- HANDLE PHASE TRANSITIONS ---
-    // If we just switched blocks, FORCE WARMUP.
-    // Otherwise, check standard N-Back depth.
     if (isBlockSwitch && !isRepairMode) {
         setPhase('WARMUP');
     } else if (!isRepairMode) {
-        // Standard check: If history is full enough, we are playing.
-        // Note: We use 'history.length + 1' logic effectively below when setting state
-        const currentHistoryLength = isBlockSwitch ? 0 : history.length;
-        if (currentHistoryLength < n) setPhase('WARMUP');
+        // If Block Switch happened, history length is effectively 0 for N-Back purposes
+        // But we physically reset the array later, so this check ensures logic holds
+        const effectiveHistory = isBlockSwitch ? 0 : history.length;
+        if (effectiveHistory < n) setPhase('WARMUP');
         else setPhase('PLAYING');
     }
 
@@ -1325,24 +1329,27 @@ export default function ProjectOmegaUltimate() {
     setIsButtonsFlipped(tier >= 2 && Math.random() > 0.5);
 
     // --- GENERATE STIMULUS ---
-    // If Block Switch, we pass NULL for prevResult because the old history is dead logic.
     const shouldMatch = Math.random() > 0.5;
     const prevNItem = (!isBlockSwitch && !isRepairMode && history.length >= n) ? history[history.length - n] : null;
     const prevResult = prevNItem ? prevNItem.result : null;
 
     let turnData;
+    let generated: { stim: StimulusData, result: string };
+
     switch(type) {
-      case 'FLUX_FEATURE': turnData = generateFluxFeature(prevResult, shouldMatch, tier); break;
-      case 'FLUX_COMPARISON': turnData = generateFluxComparison(prevResult, shouldMatch, tier); break;
-      case 'FLUX_OPPOSITION': turnData = generateFluxOpposition(prevResult, shouldMatch, tier); break;
-      case 'FLUX_HIERARCHY': turnData = generateFluxHierarchy(prevResult, shouldMatch, tier); break;
-      case 'FLUX_CAUSAL': turnData = generateFluxCausal(prevResult, shouldMatch, tier); break;
-      case 'FLUX_SPATIAL': turnData = generateFluxSpatial(prevResult, shouldMatch, tier); break;
-      case 'FLUX_DEICTIC': turnData = generateFluxDeictic(prevResult, shouldMatch, tier); break;
-      case 'FLUX_CONDITIONAL': turnData = generateFluxConditional(prevResult, shouldMatch, tier); break;
-      case 'FLUX_ANALOGY': turnData = generateFluxAnalogy(prevResult, shouldMatch, tier); break;
-      default: turnData = generateFluxFeature(prevResult, shouldMatch, tier);
+      case 'FLUX_FEATURE': generated = generateFluxFeature(prevResult, shouldMatch, tier); break;
+      case 'FLUX_COMPARISON': generated = generateFluxComparison(prevResult, shouldMatch, tier); break;
+      case 'FLUX_OPPOSITION': generated = generateFluxOpposition(prevResult, shouldMatch, tier); break;
+      case 'FLUX_HIERARCHY': generated = generateFluxHierarchy(prevResult, shouldMatch, tier); break;
+      case 'FLUX_CAUSAL': generated = generateFluxCausal(prevResult, shouldMatch, tier); break;
+      case 'FLUX_SPATIAL': generated = generateFluxSpatial(prevResult, shouldMatch, tier); break;
+      case 'FLUX_DEICTIC': generated = generateFluxDeictic(prevResult, shouldMatch, tier); break;
+      case 'FLUX_CONDITIONAL': generated = generateFluxConditional(prevResult, shouldMatch, tier); break;
+      case 'FLUX_ANALOGY': generated = generateFluxAnalogy(prevResult, shouldMatch, tier); break;
+      default: generated = generateFluxFeature(prevResult, shouldMatch, tier);
     }
+
+    turnData = generated;
 
     if (!isRepairMode) { 
         turnData = applyMetaModifiers(turnData, tier);
@@ -1350,14 +1357,13 @@ export default function ProjectOmegaUltimate() {
 
     const newItem: HistoryItem = { result: turnData.result, stimulus: turnData.stim };
     
-    // Repair Mode Target Logic (Unchanged)
+    // Repair Mode Target Logic
     if (isRepairMode) {
         const makeMatch = Math.random() > 0.5;
         if (makeMatch) setRepairTargetResult(newItem.result);
         else {
-             // ... (Distractor Logic same as previous) ...
-             let possible: string[] = [];
-             switch(type) {
+            let possible: string[] = [];
+            switch(type) {
                 case 'FLUX_FEATURE': possible = ['MATCH_COLOR', 'MATCH_SHAPE', 'EXACT', 'NONE']; break;
                 case 'FLUX_COMPARISON': possible = ['GREATER', 'LESSER']; break;
                 case 'FLUX_OPPOSITION': possible = ['SAME', 'OPPOSITE', 'DIFFERENT']; break;
@@ -1376,11 +1382,9 @@ export default function ProjectOmegaUltimate() {
 
     setCurrentItem(newItem);
 
-    // --- HISTORY UPDATE ---
-    // If we switched blocks, we RESET history to just this new item.
-    // Otherwise, we append.
+    // --- HISTORY UPDATE (Reset on Switch) ---
     if (isBlockSwitch && !isRepairMode) {
-        setHistory([newItem]); // Wipe and start fresh
+        setHistory([newItem]); 
     } else {
         setHistory(prev => [...prev, newItem]);
     }
