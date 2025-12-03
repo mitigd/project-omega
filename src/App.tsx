@@ -1264,7 +1264,7 @@ export default function ProjectOmegaUltimate() {
 
 const nextTurn = useCallback(() => {
     const n = config.nBackLevel;
-    const histLen = history.length;
+    //const histLen = history.length;
 
     let isBlockSwitch = false;
     let type: GeneratorType = 'FLUX_FEATURE';
