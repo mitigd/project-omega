@@ -160,7 +160,6 @@ const generateFluxFeature = (prevResult: string | null, forceMatch: boolean, tie
 };
 
 // 2. FLUX COMPARISON
-// 2. FLUX COMPARISON (Fixed: Polarity Hub to break Directional Lock)
 const generateFluxComparison = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
     const relations = tier >= 2 ? ['GREATER', 'LESSER', 'UNKNOWN'] : ['GREATER', 'LESSER'];
     
@@ -1100,15 +1099,15 @@ const TutorialModal = ({ onClose }: { onClose: () => void }) => {
           {/* 2. Comparison */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <div className="text-emerald-400 font-black text-lg mb-2">2. COMPARISON</div>
-            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Pivot Scale</div>
+            <div className="text-xs text-slate-500 uppercase font-bold mb-2">The Polarity Hub</div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Find the Hub. Check the Symbol + Context (Color).
-              <br/><br/>
-              <strong>Tier 1-2:</strong> Distinct Symbols (Star vs Circle).
+              1. Solve the Chain (Left &gt; Hub &gt; Right).
               <br/>
-              <strong>Tier 3:</strong> Contextual (Same Symbol, Different Color).
-              <br/><br/>
-              <strong>Result:</strong> If A &gt; Hub and C &lt; Hub... <span className="text-white font-mono bg-black px-1 rounded">A &gt; C</span> (GREATER).
+              2. Check the <strong>Hub Color</strong>.
+              <br/>
+              <strong className="text-blue-400">BLUE/WHITE:</strong> Standard. Keep Result.
+              <br/>
+              <strong className="text-red-400">RED:</strong> Inverter. Flip Result (&gt; becomes &lt;).
             </p>
           </div>
 
