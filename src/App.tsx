@@ -160,89 +160,114 @@ const generateFluxFeature = (prevResult: string | null, forceMatch: boolean, tie
 };
 
 // 2. FLUX COMPARISON
+// 2. FLUX COMPARISON (Fixed: Polarity Hub to break Directional Lock)
 const generateFluxComparison = (prevResult: string | null, forceMatch: boolean, tier: number): { stim: StimulusData, result: string } => {
-  const relations = ['GREATER', 'LESSER'];
-  let result = getRandomItem(relations);
-  if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
-  else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
-  
-  const items = tier === 1 ? ['A', 'B', 'C'] : shuffleArray(['A', 'B', 'C']);
-  const hub = items[0]; const leaf1 = items[1]; const leaf2 = items[2];
-  
-  const visualSwap = tier >= 2 && Math.random() > 0.5;
-  const visualLeft = visualSwap ? leaf2 : leaf1; const visualRight = visualSwap ? leaf1 : leaf2;
-  
-  const colorOptions = [
-      { name: 'RED', class: 'from-red-900/40 to-red-900/10' }, 
-      { name: 'BLUE', class: 'from-blue-900/40 to-blue-900/10' }, 
-      { name: 'GREEN', class: 'from-emerald-900/40 to-emerald-900/10' }, 
-      { name: 'PURPLE', class: 'from-purple-900/40 to-purple-900/10' }
-  ];
+    const relations = tier >= 2 ? ['GREATER', 'LESSER', 'UNKNOWN'] : ['GREATER', 'LESSER'];
+    
+    let result = getRandomItem(relations);
+    if (forceMatch && prevResult && relations.includes(prevResult)) result = prevResult;
+    else if (!forceMatch && prevResult) result = getRandomItem(relations.filter(r => r !== prevResult));
+    
+    const items = shuffleArray(['A', 'B', 'C']);
+    const hub = items[0]; const leaf1 = items[1]; const leaf2 = items[2];
+    
+    const visualSwap = tier >= 2 && Math.random() > 0.5;
+    const visualLeft = visualSwap ? leaf2 : leaf1; const visualRight = visualSwap ? leaf1 : leaf2;
+    
+    // --- NEW: HUB POLARITY (Tier 3+) ---
+    // If Tier 3, the Hub can be RED (Invert) or BLUE (Normal).
+    // Tier 1/2: Always Blue (Normal).
+    const hubColor = (tier >= 3 && Math.random() > 0.5) ? 'RED' : 'BLUE';
+    const isInverted = hubColor === 'RED';
 
-  // 1. Calculate Logic
-  const rel1 = result === 'GREATER' ? '>' : '<'; 
-  const rel2 = result === 'GREATER' ? '<' : '>'; 
+    // --- REVERSE ENGINEERING THE LOGIC ---
+    // We need the FINAL result to match 'result'.
+    // If we have an Inverter, we need to generate the OPPOSITE chain to get the desired result.
+    
+    let targetLogic = result;
+    
+    if (isInverted && result !== 'UNKNOWN') {
+        // If we want LESSER but Hub flips it, we must generate a GREATER chain.
+        targetLogic = result === 'GREATER' ? 'LESSER' : 'GREATER';
+    }
+    
+    // Now build the chain for 'targetLogic'
+    let rel1 = '', rel2 = '';
+    
+    if (targetLogic === 'UNKNOWN') {
+        const brokenType = Math.random() > 0.5 ? '>' : '<';
+        rel1 = brokenType; rel2 = brokenType;
+    } else {
+        rel1 = targetLogic === 'GREATER' ? '>' : '<'; 
+        rel2 = targetLogic === 'GREATER' ? '<' : '>'; 
+    }
 
-  // 2. Determine Visual Meanings
-  const meaningL = visualLeft === leaf1 ? rel1 : rel2;
-  const rawMeaningR = visualRight === leaf2 ? rel2 : rel1;
-  const meaningR = rawMeaningR === '>' ? '<' : '>'; 
+    // Query Direction (The Twist from before)
+    const isReverseQuery = Math.random() > 0.5;
+    
+    // Adjust for Query Reversal
+    if (targetLogic !== 'UNKNOWN' && isReverseQuery) {
+        // If Query flips (Right vs Left), we need to flip the chain logic again to compensate
+        // e.g. User reads C vs A.
+        // If we built A > C (Greater), User reads Less.
+        // So if we want User to read Greater, we must build A < C (Less).
+        const currentRel1 = rel1;
+        rel1 = currentRel1 === '>' ? '<' : '>';
+        const currentRel2 = rel2;
+        rel2 = currentRel2 === '>' ? '<' : '>';
+    }
 
-  let dict: Record<string, string> = {};
-  let visualLeftColor, visualRightColor;
-  let visualLeftIcon, visualRightIcon;
+    // Visual Mapping
+    const meaningL = visualLeft === leaf1 ? rel1 : rel2;
+    const rawMeaningR = visualRight === leaf2 ? rel2 : rel1;
+    const meaningR = rawMeaningR === '>' ? '<' : '>'; 
 
-  if (tier >= 3) {
-      // TIER 3: Contextual
-      // FIX: Force cR to be different from cL
-      const cL = getRandomItem(colorOptions);
-      const cR = getRandomItem(colorOptions.filter(c => c.name !== cL.name)); 
-      
-      const iconL = getRandomItem(ICONS);
-      const iconR = getRandomItem(ICONS.filter(i => i !== iconL));
-      
-      dict = shuffleEntries({ 
-          [`${iconL} (${cL.name})`]: meaningL, 
-          [`${iconR} (${cR.name})`]: meaningR 
-      });
-      
-      visualLeftColor = cL; visualRightColor = cR;
-      visualLeftIcon = iconL; visualRightIcon = iconR;
+    // Context Colors & Icons
+    const colorOptions = [
+        { name: 'RED', class: 'from-red-900/40 to-red-900/10' }, 
+        { name: 'BLUE', class: 'from-blue-900/40 to-blue-900/10' }, 
+        { name: 'GREEN', class: 'from-emerald-900/40 to-emerald-900/10' }, 
+        { name: 'PURPLE', class: 'from-purple-900/40 to-purple-900/10' }
+    ];
 
-  } else {
-      // TIER 1 & 2: Standard
-      const iconBase = getRandomItem(ICONS);
-      const iconGr = iconBase;
-      const iconLs = getRandomItem(ICONS.filter(i => i !== iconBase));
-      
-      dict = shuffleEntries({ [iconGr]: '>', [iconLs]: '<' });
-      
-      visualLeftIcon = meaningL === '>' ? iconGr : iconLs;
-      visualRightIcon = meaningR === '>' ? iconGr : iconLs;
+    let dict: Record<string, string> = {};
+    let visualLeftColor, visualRightColor;
+    let visualLeftIcon, visualRightIcon;
 
-      visualLeftColor = colorOptions[0]; visualRightColor = colorOptions[0]; 
-  }
+    const iconL = getRandomItem(ICONS);
+    const iconR = getRandomItem(ICONS.filter(i => i !== iconL));
 
-  return { 
-      stim: { 
-          type: 'FLUX_COMPARISON', 
-          tier, 
-          dictionary: dict, 
-          dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
-          contextColors: tier >= 3 ? [visualLeftColor.class, visualRightColor.class] : undefined, 
-          visuals: { 
-              hub, 
-              leftLeaf: visualLeft, 
-              rightLeaf: visualRight, 
-              leftIcon: visualLeftIcon,   
-              rightIcon: visualRightIcon, 
-              isSwapped: visualSwap 
-          }, 
-          textQuery: `DERIVE: ${leaf1} vs ${leaf2}`, 
-          logicProof: result === 'GREATER' ? `(${leaf1} > ${hub} > ${leaf2})` : `(${leaf1} < ${hub} < ${leaf2})` 
-      }, 
-      result 
-  };
+    if (tier >= 3) {
+        const cL = getRandomItem(colorOptions);
+        const cR = getRandomItem(colorOptions.filter(c => c.name !== cL.name)); 
+        
+        dict = shuffleEntries({ 
+            [`${iconL} (${cL.name})`]: meaningL, 
+            [`${iconR} (${cR.name})`]: meaningR 
+        });
+        visualLeftColor = cL; visualRightColor = cR;
+    } else {
+        dict = shuffleEntries({ [iconL]: meaningL, [iconR]: meaningR });
+        visualLeftColor = colorOptions[0]; visualRightColor = colorOptions[0]; 
+    }
+
+    const queryText = isReverseQuery ? `DERIVE: ${leaf2} vs ${leaf1}` : `DERIVE: ${leaf1} vs ${leaf2}`;
+    
+    return { 
+        stim: { 
+            type: 'FLUX_COMPARISON', tier, dictionary: dict, dictionaryPos: Math.random() > 0.5 ? 'LEFT' : 'RIGHT', 
+            contextColors: tier >= 3 ? [visualLeftColor.class, visualRightColor.class] : undefined, 
+            visuals: { 
+                hub, hubColor, // Pass Hub Color
+                leftLeaf: visualLeft, rightLeaf: visualRight, 
+                leftIcon: iconL, rightIcon: iconR, 
+                isSwapped: visualSwap 
+            }, 
+            textQuery: queryText, 
+            logicProof: `Chain(${targetLogic}) ${isInverted ? '* Red Hub(Flip)' : ''} = ${result}` 
+        }, 
+        result 
+    };
 };
 
 // 3. FLUX OPPOSITION
@@ -870,43 +895,31 @@ const VisualRenderer: React.FC<{ stim: StimulusData, isRepairMode?: boolean }> =
       }
       // 2. COMPARISON
       if (stim.type === 'FLUX_COMPARISON') {
-        const { hub, leftLeaf, rightLeaf, leftIcon, rightIcon } = stim.visuals;
+        const { hub, hubColor, leftLeaf, rightLeaf, leftIcon, rightIcon } = stim.visuals;
         const { contextColors } = stim;
+        
+        // Style based on Hub Color
+        const hubStyle = hubColor === 'RED' 
+            ? 'border-red-500 text-red-100 shadow-[0_0_20px_rgba(239,68,68,0.5)] bg-red-950' 
+            : 'border-slate-300 text-black bg-white shadow-2xl'; // Standard Blue/White
+
         return (
             <div className="flex flex-col gap-4 w-full items-center justify-center">
                 <div className="relative flex items-center gap-2 md:gap-4 bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden px-6 py-6 md:px-12 md:py-8 w-full max-w-lg">
-                    {/* Context Backgrounds (Tier 3 Only) */}
-                    {contextColors && (
-                        <div className="absolute inset-0 flex z-0">
-                            <div className={`w-1/2 h-full bg-gradient-to-r ${contextColors[0]}`}></div>
-                            <div className={`w-1/2 h-full bg-gradient-to-l ${contextColors[1]}`}></div>
-                        </div>
-                    )}
+                    {contextColors && (<div className="absolute inset-0 flex z-0"><div className={`w-1/2 h-full bg-gradient-to-r ${contextColors[0]}`}></div><div className={`w-1/2 h-full bg-gradient-to-l ${contextColors[1]}`}></div></div>)}
                     
-                    {/* Left Side */}
-                    <div className="relative z-10 flex flex-col items-center gap-2 flex-1">
-                        <div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{leftLeaf}</div>
-                    </div>
+                    <div className="relative z-10 flex flex-col items-center gap-2 flex-1"><div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{leftLeaf}</div></div>
                     
-                    {/* Left Icon */}
-                    <div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">
-                        {leftIcon}
-                    </div>
+                    <div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">{leftIcon}</div>
                     
-                    {/* Hub */}
-                    <div className="relative z-10 w-16 h-16 md:w-24 md:h-24 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center text-3xl md:text-5xl font-black text-black shadow-2xl mx-2">
+                    {/* UPDATED HUB VISUAL */}
+                    <div className={`relative z-10 w-16 h-16 md:w-24 md:h-24 rounded-full border-4 flex items-center justify-center text-3xl md:text-5xl font-black mx-2 transition-all ${hubStyle}`}>
                         {hub}
                     </div>
                     
-                    {/* Right Icon */}
-                    <div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">
-                        {rightIcon}
-                    </div>
+                    <div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-black/80 border border-slate-500 rounded-lg flex items-center justify-center text-yellow-400 text-xl md:text-2xl shadow-xl">{rightIcon}</div>
                     
-                    {/* Right Side */}
-                    <div className="relative z-10 flex flex-col items-center gap-2 flex-1">
-                        <div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{rightLeaf}</div>
-                    </div>
+                    <div className="relative z-10 flex flex-col items-center gap-2 flex-1"><div className="text-3xl md:text-5xl font-black text-white drop-shadow-md">{rightLeaf}</div></div>
                 </div>
             </div>
         );
