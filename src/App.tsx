@@ -232,7 +232,7 @@ const generateFluxComparison = (prevResult: string | null, forceMatch: boolean, 
 
     let dict: Record<string, string> = {};
     let visualLeftColor, visualRightColor;
-    let visualLeftIcon, visualRightIcon;
+    //let visualLeftIcon, visualRightIcon;
 
     const iconL = getRandomItem(ICONS);
     const iconR = getRandomItem(ICONS.filter(i => i !== iconL));
